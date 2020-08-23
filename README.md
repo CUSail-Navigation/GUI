@@ -1,25 +1,7 @@
-#CU Sail
-#Cornell University Autonomous Sailboat Team
-#Navigation Project
+# GUI
 
-The enclosed files contain the following elments of the navigation system of SailVane
+Dependencies (install with pip3): PyQt5, pyqtgraph, numpy, serial, xbee (and a few more but those should be pre-installed)
 
--Arduino Individual Code: This folder contains sensor code for the boat's Rotary Sensor, IMU and GPS
+There are two versions of the GUI. The __standalone__ version mocks the latitude and longitude data (it just loops around the engineering quad). To run this version, you must upload *GUI_Standalone_Test/GUI_Standalone_Test.ino* to an Arduino and have it plugged in to your computer. In *basestation_standalone.py*, change the name of the serial port to be the one that your Arduino is plugged in to (serial_port = serial.Serial('your port here', 9600)). Now, you can run *python3 basestation_standalone.py*.
 
--Simulators: This folder contains two kinds of MATLAB simulators made for testing the algorithm
-
--Short Term Navigation Algorithm: This folder contains code in C that eventually populates the
-				  function, nShort() in the Arduino Code
-
--Arduino Navigation Code: This folder contains code that is uploaded to the microcontroler, and is
-                          the culmination of the sensor code and the navigation algorithm
-
--Individual Functions for Arduino Code: Contains (mostly) helper functions used in the Arduino Code
-
-#Recent Updates (10/6/16)
-
--Added the most current version of the algorithm to the Short Term Navigation Algorithm folder
-
--Added the most current version of the arduino code to the Arduino Navigation Code folder
-
--The link to modify the quad coordinates is: https://binged.it/2oi2yOR
+To run the *full* test suite, program an Arduino with *GUI_Test_Suite/GUI_Test_Suite.ino*. This version requires that GPS and Xbee modules are attached to the Arduino. Change the name of the serial port in *basestation.py* to be the name of the port that the Xbee module connected to your computer is plugged in to. Now, you can run *python3 basestation.py*.
