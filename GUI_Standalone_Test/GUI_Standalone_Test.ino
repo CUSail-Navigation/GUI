@@ -107,6 +107,7 @@ void loop() {
   double yaw = getRandWindDirectionOrYaw();
   double sail = getRandWindDirectionOrYaw();
   double tail = getRandWindDirectionOrYaw();
+  double heading = getRandWindDirectionOrYaw();
 
   Serial.print("----------NAVIGATION----------");
   Serial.print(",");
@@ -139,6 +140,9 @@ void loop() {
   Serial.print(",");
   Serial.print("Tail Angle: ");
   Serial.print(tail);
+  Serial.print(",");
+  Serial.print("Heading: ");
+  Serial.print(heading);
   Serial.print(",");
   Serial.print("----------END----------");
   Serial.print("\n");

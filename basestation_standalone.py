@@ -47,9 +47,7 @@ curPacket = ""
 btn3 = QtGui.QPushButton('Reload Buoys')
 # text = QtGui.QLineEdit('Enter Buoy/Waypoint')
 listw = QtGui.QListWidget()
-listb = QtGui.QListWidget()
 labelw = QtGui.QLabel('Waypoints')
-labelb = QtGui.QLabel("Buoys")
 plot = pg.PlotWidget()
 plot.showGrid(True, True, 0.3)
 plot.hideButtons()
@@ -57,6 +55,7 @@ plot.hideButtons()
 display0 = QtGui.QLabel('Sail, Tail: <x,y>')
 display1 = QtGui.QLabel('Wind Direction: --')
 display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
+display3 = QtGui.QLabel('Heading: --')
 
 
 class CompassWidget(QWidget):
@@ -198,10 +197,12 @@ def update(data):
         display1.setText("Wind Angle: " + str(wind_dir))
         display2.setText("Roll, Pitch, Yaw: <" + str(roll) + "," + str(pitch) +
                          "," + str(yaw) + ">")
+        display3.setText("Heading: " + data["Heading"])
         # subtract 90 here to get wrt N instead of the x-axis
         sail_compass.setAngle(-(float(data["Sail Angle"]) - 90.0))
         wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
         boat_compass.setAngle(-(float(data["Yaw"]) - 90.0))
+        angle_compass.setAngle(-(float(data["Heading"]) - 90.0))
     except:
         print("Corrupt Data Dump")
 
@@ -285,9 +286,7 @@ def redrawBuoys():
     pen = pg.mkPen((235, 119, 52))
     brush = pg.mkBrush((235, 119, 52))
 
-    listb.clear()
     for buoy in buoys:
-        listb.addItem("({:.2f}, {:.2f})".format(buoy[0], buoy[1]))
         plot.plot([buoy[0]], [buoy[1]],
                   symbolPen=pen,
                   symbolBrush=brush,
@@ -351,6 +350,7 @@ def latLongToXY(lat, long):
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
 sail_compass = CompassWidget()
+angle_compass = CompassWidget()
 
 # btn.clicked.connect(waypoint)
 #btn2.clicked.connect(update)
@@ -362,21 +362,18 @@ w.setLayout(layout)
 ## Add widgets to the layout in their proper positions
 ## goes row, col, rowspan, colspan
 
-# layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
-# layout.addWidget(btn2, 0, 0, 1, 2)  # button2 goes in upper-left
-layout.addWidget(btn3, 0, 0)  # button3 goes in upper-left is buoy
-# layout.addWidget(text, 2, 0, 1, 2)  # text edit goes in middle-left
-layout.addWidget(labelw, 1, 0)
-# layout.addWidget(labelb, 1, 1)
-layout.addWidget(listw, 2, 0)  # list widget goes in bottom-left
-# layout.addWidget(listb, 2, 1)  # list widget goes in bottom-left
+layout.addWidget(btn3, 1, 0)  # button3 goes in upper-left is buoy
+layout.addWidget(labelw, 2, 0)
+layout.addWidget(listw, 3, 0)  # list widget goes in bottom-left
 layout.addWidget(display0, 6, 0)
 layout.addWidget(display1, 6, 1)  # display1 widget goes in bottom-left
 layout.addWidget(display2, 6, 2)  # display2 widget goes in bottom-middle
-layout.addWidget(plot, 0, 1, 5, 2)  # plot goes on right side, spanning 3 rows
+layout.addWidget(display3, 6, 3)
+layout.addWidget(plot, 0, 1, 5, 3)  # plot goes on right side, spanning 3 rows
 layout.addWidget(sail_compass, 5, 0, 1, 1)
 layout.addWidget(wind_compass, 5, 1, 1, 1)
 layout.addWidget(boat_compass, 5, 2, 1, 1)
+layout.addWidget(angle_compass, 5, 3, 1, 1)
 
 # makes exit a little cleaner
 exit_action = QtGui.QAction("Exit", app)
