@@ -288,9 +288,19 @@ def redrawWaypoints():
     if len(waypoints) < 1:
         return
 
+    # avoid div by zero
+    if len(waypoints) == 1:
+        pen = pg.mkPen('r')
+        brush = pg.mkBrush('r')
+        plot.plot([waypoints[0][0]], [waypoints[0][1]],
+                  symbolPen=pen,
+                  symbolBrush=brush,
+                  symbol="+")
+        return
+
     start_color = (255, 0, 0)
-    end_color = (0, 0, 255)
-    slope = [(end_color[i] - start_color[i]) / len(waypoints)
+    end_color = (0, 70, 255)
+    slope = [(end_color[i] - start_color[i]) / (len(waypoints) - 1)
              for i in range(len(start_color))]
 
     for i in range(len(waypoints)):
