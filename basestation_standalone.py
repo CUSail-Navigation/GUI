@@ -19,6 +19,7 @@ max_points = 20
 orig_lat = None
 orig_long = None
 buoys = []
+waypoints = []
 
 pg.setConfigOption('background', 'w')
 pp = pprint.PrettyPrinter(indent=4)
@@ -35,15 +36,16 @@ serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
 
 header = "----------NAVIGATION----------"
 end = "----------END----------"
+waypt_header = "----------WAYPOINTS----------"
 # regex = "(?:'rf_data': b')((.|\n)*)'"
 regex = "(b')((.|\n)*)'"
 curPacket = ""
 
 ## Create some widgets to be placed inside
-btn = QtGui.QPushButton('Waypoint')
-btn2 = QtGui.QPushButton('Update')
-btn3 = QtGui.QPushButton('Buoy')
-text = QtGui.QLineEdit('Enter Buoy/Waypoint')
+# btn = QtGui.QPushButton('Waypoint')
+# btn2 = QtGui.QPushButton('Update')
+btn3 = QtGui.QPushButton('Reload Buoys')
+# text = QtGui.QLineEdit('Enter Buoy/Waypoint')
 listw = QtGui.QListWidget()
 listb = QtGui.QListWidget()
 plot = pg.PlotWidget()
@@ -181,6 +183,7 @@ def update(data):
                   clear=True,
                   pen=pen)
         redrawBuoys()
+        redrawWaypoints()
         w.update()
         w.show()
         display1.setText("Wind Angle: " + data["Wind Direction"])
@@ -223,6 +226,20 @@ def run():
                         data[label] = value
 
                 update(data)
+
+            if waypt_header in split_line and end in split_line:
+                data_line = filter(lambda l: l not in [waypt_header, end],
+                                   split_line)
+
+                global waypoints
+                waypoints = []
+                for d in data_line:
+                    if d.count(" ") == 1 and d.count(":") == 2:
+                        xval, yval = d.split(" ")
+                        _, x = xval.split(":")
+                        _, y = yval.split(":")
+                        waypoints.append((float(x), float(y)))
+                        redrawWaypoints()
         else:
             print("Regex failed to match")
     except KeyboardInterrupt:
@@ -230,48 +247,6 @@ def run():
 
 
 brush_list = [pg.mkColor(c) for c in "rgbcmykwrg"]
-
-
-def waypoint():
-    pen = random.choice(brush_list)
-    entry = text.text().strip().replace(" ", "")
-    try:
-        arr = entry.split(',')
-        if (not isinstance(float(arr[0]), float)
-                or not isinstance(float(arr[1]), float)):
-            raise Exception
-        #if(entry.count(",") > 1):
-        #raise Exception
-        listw.addItem(entry)
-        x = float(arr[0])
-        y = float(arr[1])
-
-        plot.plot([x + 4, x - 4], [y + 4, y - 4], pen='k')
-        plot.plot([x + 4, x - 4], [y - 4, y + 4], pen='k')
-
-    except Exception as e:
-        print("Could not convert string to float: '" + entry + "'")
-
-
-def buoy():
-    pen = random.choice(brush_list)
-    entry = text.text().strip().replace(" ", "")
-    try:
-        arr = entry.split(',')
-        if (not isinstance(float(arr[0]), float)
-                or not isinstance(float(arr[1]), float)):
-            raise Exception
-        #if(entry.count(",") > 1):
-        #raise Exception
-        listb.addItem(entry)
-        x = float(arr[0])
-        y = float(arr[1])
-
-        plot.plot([x + 4, x - 4], [y + 4, y - 4], pen='c')
-        plot.plot([x + 4, x - 4], [y - 4, y + 4], pen='c')
-
-    except Exception as e:
-        print("Could not convert string to float: '" + entry + "'")
 
 
 def reloadBuoys():
@@ -298,15 +273,37 @@ def reloadBuoys():
 def redrawBuoys():
     global buoys
     pen = pg.mkPen((235, 119, 52))
-    dif = 5
+    brush = pg.mkBrush((235, 119, 52))
 
     for buoy in buoys:
-        plot.plot([buoy[0] + dif, buoy[0] - dif],
-                  [buoy[1] + dif, buoy[1] - dif],
-                  pen=pen)
-        plot.plot([buoy[0] + dif, buoy[0] - dif],
-                  [buoy[1] - dif, buoy[1] + dif],
-                  pen=pen)
+        plot.plot([buoy[0]], [buoy[1]],
+                  symbolPen=pen,
+                  symbolBrush=brush,
+                  symbol="o")
+
+
+def redrawWaypoints():
+    global waypoints
+
+    if len(waypoints) < 1:
+        return
+
+    start_color = (255, 0, 0)
+    end_color = (0, 0, 255)
+    slope = [(end_color[i] - start_color[i]) / len(waypoints)
+             for i in range(len(start_color))]
+
+    for i in range(len(waypoints)):
+        color = [
+            slope[j] * i + start_color[j] for j in range(len(start_color))
+        ]
+
+        pen = pg.mkPen(color)
+        brush = pg.mkBrush(color)
+        plot.plot([waypoints[i][0]], [waypoints[i][1]],
+                  symbolPen=pen,
+                  symbolBrush=brush,
+                  symbol="+")
 
 
 def latLongToXY(lat, long):
@@ -326,9 +323,9 @@ def latLongToXY(lat, long):
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
 
-btn.clicked.connect(waypoint)
+# btn.clicked.connect(waypoint)
 #btn2.clicked.connect(update)
-btn3.clicked.connect(buoy)
+btn3.clicked.connect(reloadBuoys)
 ## Create a grid layout to manage the widgets size and position
 layout = QtGui.QGridLayout()
 w.setLayout(layout)
@@ -336,10 +333,10 @@ w.setLayout(layout)
 ## Add widgets to the layout in their proper positions
 ## goes row, col, rowspan, colspan
 
-layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
+# layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
 # layout.addWidget(btn2, 0, 0, 1, 2)  # button2 goes in upper-left
 layout.addWidget(btn3, 1, 1)  # button3 goes in upper-left is buoy
-layout.addWidget(text, 2, 0, 1, 2)  # text edit goes in middle-left
+# layout.addWidget(text, 2, 0, 1, 2)  # text edit goes in middle-left
 layout.addWidget(listw, 4, 0)  # list widget goes in bottom-left
 layout.addWidget(listb, 4, 1)  # list widget goes in bottom-left
 layout.addWidget(display1, 6, 0)  # display1 widget goes in bottom-left

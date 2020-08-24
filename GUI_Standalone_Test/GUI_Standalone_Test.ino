@@ -76,8 +76,29 @@ void setup() {
   randomSeed(analogRead(0));
 }
 
+void printAllWaypoints() {
+  Serial.print("----------WAYPOINTS----------");
+  
+  int num = (int) random(5, 20);
+  for (int i = 0; i < num; i++) {
+    coord_xy waypt = getRandPoint();
+    Serial.print(",X:");
+    Serial.print(waypt.x, 4);
+    Serial.print(" Y:");
+    Serial.print(waypt.y, 4);
+  }
+
+  Serial.print(",----------END----------\n");
+}
+
 void loop() {
   delay(2500);
+
+  if (idx % 20 == 0) {
+    printAllWaypoints();
+    idx = 0;
+  }
+  idx++;
 
   coord_xy currentPosition = getRandPoint();
   double windDir = getRandWindDirectionOrYaw();
