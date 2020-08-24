@@ -1,24 +1,22 @@
 import sys
 from PyQt5 import QtGui
-from PyQt5.QtGui import *  # (the example applies equally well to PySide)
+from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox
-# from PyQt5 import QtWidgets
-from PIL import Image
 import pyqtgraph as pg
 import time as time
-import json
 import pprint
 import random
-import PIL
 import numpy
-global past_point
 import os
 import serial
 # from xbee import XBee
 import re
 import pprint
-past_point = (0, 0)
+
+# global past_points, max_points
+past_points = []
+max_points = 20
 
 pg.setConfigOption('background', 'w')
 pp = pprint.PrettyPrinter(indent=4)
@@ -47,35 +45,17 @@ text = QtGui.QLineEdit('Enter Buoy/Waypoint')
 listw = QtGui.QListWidget()
 listb = QtGui.QListWidget()
 plot = pg.PlotWidget()
-plot.setLimits(minXRange=150, maxXRange=150, minYRange=150, maxYRange=150)
-display1 = QtGui.QLabel('Wind Direction: <x,y,z>')
+plot.showGrid(True, True, 0.3)
+plot.hideButtons()
+# plot.setLimits(minXRange=150, maxXRange=150, minYRange=150, maxYRange=150)
+display1 = QtGui.QLabel('Wind Direction: --')
 display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
-
-#Create Image
-
-#files = os.listdir("/Users/mahikakudlugi/Desktop/CUSail/new_basestation_py/")
-#for file in files:
-#if file is "sailboat_cartoon.jpg":
-# img = Image.open("sailboat_cartoon.jpg")
-# img = img.rotate(90)
-
-#im = Image.open("sailboat_cartoon.jpg")
-#im = numpy.asarray(Image.open('sailboat_cartoon.jpg','rb'))
-#I = numpy.asarray(Image.open('sailboat_cartoon.jpg'))
-#im = Image.fromarray(numpy.uint8(I))
-
-#im = Image.open("/Users/mahikakudlugi/Desktop/CUSail/new_basestation_py/sailboat_cartoon.jpg")
-#np_im = numpy.array(im)
-# im2arr = numpy.array(img)
-# image = pg.image(im2arr)
 
 
 class CompassWidget(QWidget):
-
     angleChanged = pyqtSignal(float)
 
     def __init__(self, parent=None):
-
         QWidget.__init__(self, parent)
 
         self._angle = 0.0
@@ -92,7 +72,6 @@ class CompassWidget(QWidget):
         }
 
     def paintEvent(self, event):
-
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -104,7 +83,6 @@ class CompassWidget(QWidget):
         painter.end()
 
     def drawMarkings(self, painter):
-
         painter.save()
         painter.translate(self.width() / 2, self.height() / 2)
         scale = min((self.width() - self._margins) / 120.0,
@@ -120,7 +98,6 @@ class CompassWidget(QWidget):
 
         i = 0
         while i < 360:
-
             if i % 45 == 0:
                 painter.drawLine(0, -40, 0, -50)
                 painter.drawText(-metrics.width(self._pointText[i]) / 2.0, -52,
@@ -134,7 +111,6 @@ class CompassWidget(QWidget):
         painter.restore()
 
     def drawNeedle(self, painter):
-
         painter.save()
         painter.translate(self.width() / 2, self.height() / 2)
         painter.rotate(self._angle)
@@ -175,7 +151,6 @@ class CompassWidget(QWidget):
 
     # @pyqtSlot(float)
     def setAngle(self, angle):
-
         if angle != self._angle:
             self._angle = angle
             self.angleChanged.emit(angle)
@@ -186,51 +161,26 @@ class CompassWidget(QWidget):
 
 def update(data):
     try:
-        #f = open("live_data.txt")
-        #raw_data = out#list(f)[-1]
-        #data = json.loads(raw_data)
-        #pp.pprint(data)
-        #print("\n")
-        #print(data)
+        global past_points, max_points
         x = float(data['X position'][0:-2])
         y = float(data['Y position'][0:-2])
-        # lati = float(data['latitude'][0:-2])
-        # longi = float(data['longitude'][0:-2])
 
-        #lati = float(data['Latitude'][0:-2])
+        past_points.append((x, y))
+        if len(past_points) > max_points:
+            past_points.pop(0)
 
-        # lati = 0 + random.randint(0, 100)
-        #longi = float(data['Longitude'][0:-2])
-        # longi = 0 + random.randint(0, 100)
-        # wind_dir = float(data["Wind w.r.t North"][0:-2])
-        # roll = float(data["Roll"][0:-2])
-        # pitch = float(data["Pitch"][0:-2])
-        # boat_dir = float(data["Boat direction"][0:-2])
-        # waypoint_number = int(data["Next Waypoint #"][0:-2])
-        # waypoint_x = (data["Next Waypoint X"])
-        # waypoint_y = (data["Next Waypoint Y"])
-        # waypoint_distance = (data["Distance to Waypoint"][0:-2])
-        # waypoint_angle = (data["Angle to Waypoint"][0:-2])
-
-        # print(x)
-        # print("\n")
-        # print(y)
-        # print("\n")
-        global past_point
-        # listw.addItem(text.text())
-        # arr = text.text().split(',')
-        #x = float(arr[0])
-        #y = float(arr[1])
-        # wind_compass.setAngle(wind_dir)
-        # boat_compass.setAngle(boat_dir)
-        plot.plot([past_point[0], x], [past_point[1], y])
-        # plot.plot([past_point[0], lati], [past_point[1], longi])
-        past_point = (x, y)
-        # past_point = (lati, longi)
+        pen = pg.mkPen((49, 69, 122))
+        plot.plot([p[0] for p in past_points], [p[1] for p in past_points],
+                  clear=True,
+                  pen=pen)
         w.update()
         w.show()
-        # display1.setText("Wind Angle: " + data["Wind w.r.t North"][0:-2])
-        #display2.setText("Roll, Pitch, Yaw: <"+data["Roll"][0:-2]+","+data["Pitch"][0:-2]+","+data["Boat direction"][0:-2]+" >")
+        display1.setText("Wind Angle: " + data["Wind Direction"])
+        display2.setText("Roll, Pitch, Yaw: <" + data["Roll"] + "," +
+                         data["Pitch"] + "," + data["Yaw"] + " >")
+        # subtract 90 here to get wrt N instead of the x-axis
+        wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
+        boat_compass.setAngle(-(float(data["Yaw"]) - 90.0))
     except:
         print("Corrupt Data Dump")
 
@@ -247,39 +197,34 @@ def run():
     data = ""
     global curPacket
     try:
-        print("")
-        print("Waiting...")
+        # print("")
+        # print("Waiting...")
         packet = str(serial_port.readline())
 
-        print(packet)
+        # print(packet)
         # packet = str(xbee.wait_read_frame())
-        print("Packet Recieved!")
+        # print("Packet Recieved!")
         match = re.search(regex, packet)
         if match:
-            print("got match")
+            # print("got match")
             # line = match.group(1)
             line = match.group(2)
             data += line
             curPacket += line
 
-            print("line is {}".format(line))
-            print("curPacket is {}".format(curPacket))
-
             if (header in curPacket):
-                print("header in")
+                # print("header in")
                 header_start = curPacket.find(header)
-
                 header_end = header_start + len(header)
 
                 if (end in curPacket[header_end:-1]):
-                    print("both in")
+                    # print("both in")
                     end_start = curPacket[header_end:-1].find(end)
                     wanted_data = curPacket[header_end:-1][0:end_start]
 
                     curPacket = ""
 
                     cleaned_data = wanted_data.replace("\\n", "")
-
                     wanted_arr = cleaned_data.split("\\r")
 
                     data_assoc = {}
@@ -290,17 +235,6 @@ def run():
                                 label, value = datum.split(":")
                                 data_assoc[label] = value
 
-                    print("Parse data cycle to GUI")
-                    # Update gui with data
-                    #print (json.dumps(data_assoc))
-                    print("\n")
-                    #f.write(json.dumps(data_assoc)+"\n")
-                    #out = json.dumps(data_assoc)+"\n"
-                    #pp.pprint(data_arr)
-                    #print(out)
-                    #data = data[header_end:len(data)]
-                    #print(out)
-                    #print(data)
                     print(data_assoc)
                     if (correctData(data_assoc)):
                         update(data_assoc)
@@ -312,7 +246,6 @@ def run():
 
 
 brush_list = [pg.mkColor(c) for c in "rgbcmykwrg"]
-#pen = random.choice(brush_list)
 
 
 def waypoint():
@@ -359,7 +292,6 @@ def buoy():
 
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
-# spinBox.valueChanged[float].connect(compass.setAngle)
 
 btn.clicked.connect(waypoint)
 #btn2.clicked.connect(update)
@@ -369,7 +301,6 @@ layout = QtGui.QGridLayout()
 w.setLayout(layout)
 
 ## Add widgets to the layout in their proper positions
-
 ## goes row, col, rowspan, colspan
 
 layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
@@ -385,8 +316,6 @@ layout.addWidget(wind_compass, 5, 0)
 layout.addWidget(boat_compass, 5, 1)
 # layout.addWidget(image, 0, 3, 5, 1)
 
-#layout.addWidget()
-# layout.addWidget(spinBox, 5, 0)
 ## Display the widget as a new window
 w.show()
 

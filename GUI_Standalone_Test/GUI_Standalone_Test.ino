@@ -3,10 +3,20 @@ double longOffset;
 double longScale;
 const int latToMeter = 111318; //Conversion factor from latitude/longitude to meters
 
+int idx = 0;
+
 // mock lat/long values
 double lats[] = {42.4440353, 42.445512, 42.445676, 42.443633};
 double longs[] = {76.4841756, 76.482017, 76.484584, 76.484970};
-int idx = 0;
+
+// mock wind direction values
+double dirs[] = {133.2, 144.3, 122.6, 111.3};
+
+// mock imu values
+double pitch[] = {5.3, 4.2, 3.2, 4.4};
+double roll[] = {4.3, 2.2, 1.1, 3.9};
+double yaw[] = {270.3, 199.0, 180.3, 280.3};
+
 
 #ifndef coordinate_h
 #define coordinate_h
@@ -41,21 +51,35 @@ void setOrigin(coord_t startPoint){
   longScale = cos(latOffset * M_PI/180);  //scaling factor to account for changing distance between longitude lines
 }
 
+coord_xy getRandPoint() {
+  double x = (double) random(-100, 100) + (double) random(0, 100) / 100.0;
+  double y = (double) random(-100, 100) + (double) random(0, 100) / 100.0;
+  return coord_xy({x, y});
+}
+
+double getRandWindDirectionOrYaw() {
+  return (double) random(0, 359) + (double) random(0, 100) / 100.0;
+}
+
+double getRandPitchOrRoll() {
+  int ang = (((int) random(0, 20)) - 10) % 360;
+  return (double) ang + (double) random(0, 100) / 100.0;
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.print("Beginning Setup");
-  coord_t latlong = {lats[0],longs[0]};
-  setOrigin(latlong);
+  randomSeed(analogRead(0));
 }
 
 void loop() {
   delay(2500);
 
-  idx++;
-  idx = idx % 4;
-  
-  coord_t coord_lat_lon = {lats[idx], longs[idx]};
-  coord_xy currentPosition = xyPoint(coord_lat_lon);
+  coord_xy currentPosition = getRandPoint();
+  double windDir = getRandWindDirectionOrYaw();
+  double pitch = getRandPitchOrRoll();
+  double roll = getRandPitchOrRoll();
+  double yaw = getRandWindDirectionOrYaw();
   
   Serial.print("----------NAVIGATION----------");
   Serial.print("\n");
@@ -64,6 +88,18 @@ void loop() {
   Serial.print("\n");
   Serial.print("Y position: "); 
   Serial.println(currentPosition.y,10);
+  Serial.print("\n");
+  Serial.print("Wind Direction: ");
+  Serial.println(windDir, 2);
+  Serial.print("\n");
+  Serial.print("Pitch: ");
+  Serial.println(pitch);
+  Serial.print("\n");
+  Serial.print("Roll: ");
+  Serial.println(roll);
+  Serial.print("\n");
+  Serial.print("Yaw: ");
+  Serial.println(yaw);
   Serial.print("\n");
   Serial.print("----------END----------");
   Serial.print("\n");
