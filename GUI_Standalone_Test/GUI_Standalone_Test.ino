@@ -105,6 +105,8 @@ void loop() {
   double pitch = getRandPitchOrRoll();
   double roll = getRandPitchOrRoll();
   double yaw = getRandWindDirectionOrYaw();
+  double sail = getRandWindDirectionOrYaw();
+  double tail = getRandWindDirectionOrYaw();
 
   Serial.print("----------NAVIGATION----------");
   Serial.print(",");
@@ -131,6 +133,12 @@ void loop() {
   Serial.print(",");
   Serial.print("Yaw: ");
   Serial.print(yaw);
+  Serial.print(",");
+  Serial.print("Sail Angle: ");
+  Serial.print(sail);
+  Serial.print(",");
+  Serial.print("Tail Angle: ");
+  Serial.print(tail);
   Serial.print(",");
   Serial.print("----------END----------");
   Serial.print("\n");
