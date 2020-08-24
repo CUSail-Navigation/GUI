@@ -399,6 +399,7 @@ exit_action.setShortcut("Ctrl+Q")
 exit_action.triggered.connect(lambda: exit(0))
 
 ## Display the widget as a new window
+w.setWindowTitle("CUSail Basestation")
 w.show()
 
 w.timer = QTimer()
