@@ -43,16 +43,12 @@ regex = "(b')((.|\n)*)'"
 curPacket = ""
 
 ## Create some widgets to be placed inside
-# btn = QtGui.QPushButton('Waypoint')
-# btn2 = QtGui.QPushButton('Update')
 btn3 = QtGui.QPushButton('Reload Buoys')
-# text = QtGui.QLineEdit('Enter Buoy/Waypoint')
 listw = QtGui.QListWidget()
 labelw = QtGui.QLabel('Next Waypoints')
 plot = pg.PlotWidget()
 plot.showGrid(True, True, 0.3)
 plot.hideButtons()
-# plot.setLimits(minXRange=150, maxXRange=150, minYRange=150, maxYRange=150)
 display0 = QtGui.QLabel('Sail, Tail: <x,y>')
 display1 = QtGui.QLabel('Wind Direction: --')
 display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
@@ -190,6 +186,7 @@ def update(data):
         redrawWaypoints()
         w.update()
         w.show()
+
         wind_dir = round(float(data["Wind Direction"]))
         roll = round(float(data["Roll"]))
         pitch = round(float(data["Pitch"]))
@@ -197,11 +194,13 @@ def update(data):
         sail = round(float(data["Sail Angle"]))
         tail = round(float(data["Tail Angle"]))
         heading = round(float(data["Heading"]))
+
         display0.setText("Sail, Tail: <" + str(sail) + "," + str(tail) + ">")
         display1.setText("Wind Angle: " + str(wind_dir))
         display2.setText("Roll, Pitch, Yaw: <" + str(roll) + "," + str(pitch) +
                          "," + str(yaw) + ">")
         display3.setText("Heading: " + str(heading))
+
         # subtract 90 here to get wrt N instead of the x-axis
         sail_compass.setAngle(-(float(data["Sail Angle"]) - 90.0))
         wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
@@ -369,16 +368,14 @@ boat_compass = CompassWidget()
 sail_compass = CompassWidget()
 angle_compass = CompassWidget()
 
-# btn.clicked.connect(waypoint)
-#btn2.clicked.connect(update)
 btn3.clicked.connect(reloadBuoys)
+
 ## Create a grid layout to manage the widgets size and position
 layout = QtGui.QGridLayout()
 w.setLayout(layout)
 
 ## Add widgets to the layout in their proper positions
 ## goes row, col, rowspan, colspan
-
 layout.addWidget(hit_label, 0, 0)
 layout.addWidget(btn3, 1, 0)  # button3 goes in upper-left is buoy
 layout.addWidget(labelw, 2, 0)
