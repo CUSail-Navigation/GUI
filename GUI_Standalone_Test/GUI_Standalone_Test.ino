@@ -17,6 +17,9 @@ double pitch[] = {5.3, 4.2, 3.2, 4.4};
 double roll[] = {4.3, 2.2, 1.1, 3.9};
 double yaw[] = {270.3, 199.0, 180.3, 280.3};
 
+// mock origin
+double origLat = 42.4440353;
+double origLong = -76.4841756;
 
 #ifndef coordinate_h
 #define coordinate_h
@@ -69,6 +72,7 @@ double getRandPitchOrRoll() {
 void setup() {
   Serial.begin(9600);
   Serial.print("Beginning Setup");
+  Serial.print("\n");
   randomSeed(analogRead(0));
 }
 
@@ -80,27 +84,56 @@ void loop() {
   double pitch = getRandPitchOrRoll();
   double roll = getRandPitchOrRoll();
   double yaw = getRandWindDirectionOrYaw();
-  
+
   Serial.print("----------NAVIGATION----------");
-  Serial.print("\n");
+  Serial.print(",");
+  Serial.print("Origin Latitude: ");
+  Serial.print(origLat, 10);
+  Serial.print(",");
+  Serial.print("Origin Longitude: ");
+  Serial.print(origLong, 10);
+  Serial.print(",");
   Serial.print("X position: "); 
-  Serial.println(currentPosition.x,10);
-  Serial.print("\n");
+  Serial.print(currentPosition.x,3);
+  Serial.print(",");
   Serial.print("Y position: "); 
-  Serial.println(currentPosition.y,10);
-  Serial.print("\n");
+  Serial.print(currentPosition.y,3);
+  Serial.print(",");
   Serial.print("Wind Direction: ");
-  Serial.println(windDir, 2);
-  Serial.print("\n");
+  Serial.print(windDir, 3);
+  Serial.print(",");
   Serial.print("Pitch: ");
-  Serial.println(pitch);
-  Serial.print("\n");
+  Serial.print(pitch);
+  Serial.print(",");
   Serial.print("Roll: ");
-  Serial.println(roll);
-  Serial.print("\n");
+  Serial.print(roll);
+  Serial.print(",");
   Serial.print("Yaw: ");
-  Serial.println(yaw);
-  Serial.print("\n");
+  Serial.print(yaw);
+  Serial.print(",");
   Serial.print("----------END----------");
   Serial.print("\n");
+  
+//  Serial.print("----------NAVIGATION----------");
+//  Serial.print("\n");
+//  Serial.print("X position: "); 
+//  Serial.println(currentPosition.x,10);
+//  Serial.print("\n");
+//  Serial.print("Y position: "); 
+//  Serial.println(currentPosition.y,10);
+//  Serial.print("\n");
+//  Serial.print("Wind Direction: ");
+//  Serial.println(windDir, 2);
+//  Serial.print("\n");
+//  Serial.print("Pitch: ");
+//  Serial.println(pitch);
+//  Serial.print("\n");
+//  Serial.print("Roll: ");
+//  Serial.println(roll);
+//  Serial.print("\n");
+//  Serial.print("Yaw: ");
+//  Serial.println(yaw);
+//  Serial.print("\n");
+//  Serial.print("----------END----------");
+//  Serial.print("\n");
 }

@@ -7,16 +7,18 @@ import pyqtgraph as pg
 import time as time
 import pprint
 import random
-import numpy
+import numpy as np
 import os
 import serial
 # from xbee import XBee
 import re
 import pprint
 
-# global past_points, max_points
 past_points = []
 max_points = 20
+orig_lat = None
+orig_long = None
+buoys = []
 
 pg.setConfigOption('background', 'w')
 pp = pprint.PrettyPrinter(indent=4)
@@ -27,8 +29,8 @@ app = QtGui.QApplication(sys.argv)
 ## Define a top-level widget to hold everything
 w = QtGui.QWidget()
 
-serial_port = serial.Serial('/dev/cu.usbmodem14201',
-                            9600)  #Courtney - /dev/cu.usbmodem14201
+serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
+                            timeout=0.5)  #Courtney - /dev/cu.usbmodem14201
 # xbee = XBee(serial_port)
 
 header = "----------NAVIGATION----------"
@@ -161,9 +163,14 @@ class CompassWidget(QWidget):
 
 def update(data):
     try:
-        global past_points, max_points
-        x = float(data['X position'][0:-2])
-        y = float(data['Y position'][0:-2])
+        global past_points, max_points, orig_lat, orig_long
+        x = float(data['X position'])
+        y = float(data['Y position'])
+
+        if orig_lat is None or orig_long is None:
+            orig_lat = float(data['Origin Latitude'])
+            orig_long = float(data['Origin Longitude'])
+            reloadBuoys()
 
         past_points.append((x, y))
         if len(past_points) > max_points:
@@ -173,6 +180,7 @@ def update(data):
         plot.plot([p[0] for p in past_points], [p[1] for p in past_points],
                   clear=True,
                   pen=pen)
+        redrawBuoys()
         w.update()
         w.show()
         display1.setText("Wind Angle: " + data["Wind Direction"])
@@ -194,55 +202,31 @@ def correctData(dataIn):
 
 
 def run():
-    data = ""
-    global curPacket
     try:
-        # print("")
-        # print("Waiting...")
         packet = str(serial_port.readline())
-
-        # print(packet)
-        # packet = str(xbee.wait_read_frame())
-        # print("Packet Recieved!")
         match = re.search(regex, packet)
         if match:
-            # print("got match")
-            # line = match.group(1)
-            line = match.group(2)
-            data += line
-            curPacket += line
+            packet = packet.replace("b'", "")
+            packet = packet.replace("'", "")
+            packet = packet.replace("\\n", "")
+            packet = packet.replace("\n", "")
 
-            if (header in curPacket):
-                # print("header in")
-                header_start = curPacket.find(header)
-                header_end = header_start + len(header)
+            split_line = packet.split(",")
+            if header in split_line and end in split_line:
+                data_line = filter(lambda l: l not in [header, end],
+                                   split_line)
 
-                if (end in curPacket[header_end:-1]):
-                    # print("both in")
-                    end_start = curPacket[header_end:-1].find(end)
-                    wanted_data = curPacket[header_end:-1][0:end_start]
+                data = {}
+                for d in data_line:
+                    if ":" in d and d.count(":") == 1:
+                        label, value = d.split(":")
+                        data[label] = value
 
-                    curPacket = ""
-
-                    cleaned_data = wanted_data.replace("\\n", "")
-                    wanted_arr = cleaned_data.split("\\r")
-
-                    data_assoc = {}
-                    for datum in wanted_arr:
-                        if (":" in datum):
-                            if (datum.count(":") == 1):
-                                #print(datum)
-                                label, value = datum.split(":")
-                                data_assoc[label] = value
-
-                    print(data_assoc)
-                    if (correctData(data_assoc)):
-                        update(data_assoc)
+                update(data)
         else:
             print("Regex failed to match")
-            #print(packet)
     except KeyboardInterrupt:
-        print("bad")
+        exit(0)
 
 
 brush_list = [pg.mkColor(c) for c in "rgbcmykwrg"]
@@ -290,6 +274,55 @@ def buoy():
         print("Could not convert string to float: '" + entry + "'")
 
 
+def reloadBuoys():
+    global buoys
+
+    if orig_lat is None or orig_long is None:
+        print("Origin is not yet defined.")
+        return
+
+    try:
+        with open('./gui_input/buoy.csv', 'r') as file:
+            lines = file.readlines()
+
+        buoys = []
+        for line in lines:
+            split_line = line.split(",")
+            if len(split_line) == 2:
+                x, y = latLongToXY(float(split_line[0]), float(split_line[1]))
+                buoys.append((x, y))
+    except:
+        print("Could not read buoys from file.")
+
+
+def redrawBuoys():
+    global buoys
+    pen = pg.mkPen((235, 119, 52))
+    dif = 5
+
+    for buoy in buoys:
+        plot.plot([buoy[0] + dif, buoy[0] - dif],
+                  [buoy[1] + dif, buoy[1] - dif],
+                  pen=pen)
+        plot.plot([buoy[0] + dif, buoy[0] - dif],
+                  [buoy[1] - dif, buoy[1] + dif],
+                  pen=pen)
+
+
+def latLongToXY(lat, long):
+    if orig_lat is None or orig_long is None:
+        return
+
+    shifted_long = long - orig_long
+    shifted_lat = lat - orig_lat
+    deg_to_rad = np.pi / 180.0
+
+    x = 6371000.0 * np.cos(orig_lat * deg_to_rad) * deg_to_rad * shifted_long
+    y = 6371000.0 * deg_to_rad * shifted_lat
+
+    return x, y
+
+
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
 
@@ -304,7 +337,7 @@ w.setLayout(layout)
 ## goes row, col, rowspan, colspan
 
 layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
-layout.addWidget(btn2, 0, 0, 1, 2)  # button2 goes in upper-left
+# layout.addWidget(btn2, 0, 0, 1, 2)  # button2 goes in upper-left
 layout.addWidget(btn3, 1, 1)  # button3 goes in upper-left is buoy
 layout.addWidget(text, 2, 0, 1, 2)  # text edit goes in middle-left
 layout.addWidget(listw, 4, 0)  # list widget goes in bottom-left
@@ -314,13 +347,17 @@ layout.addWidget(display2, 6, 1)  # display2 widget goes in bottom-middle
 layout.addWidget(plot, 0, 3, 5, 1)  # plot goes on right side, spanning 3 rows
 layout.addWidget(wind_compass, 5, 0)
 layout.addWidget(boat_compass, 5, 1)
-# layout.addWidget(image, 0, 3, 5, 1)
+
+# makes exit a little cleaner
+exit_action = QtGui.QAction("Exit", app)
+exit_action.setShortcut("Ctrl+Q")
+exit_action.triggered.connect(lambda: exit(0))
 
 ## Display the widget as a new window
 w.show()
 
 w.timer = QTimer()
-w.timer.setInterval(100)
+w.timer.setInterval(1000)  # once a second should be good enough
 w.timer.timeout.connect(run)
 w.timer.start()
 
