@@ -31,7 +31,7 @@ app = QtGui.QApplication(sys.argv)
 w = QtGui.QWidget()
 
 serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
-                            timeout=0.5)  #Courtney - /dev/cu.usbmodem14201
+                            timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
 # xbee = XBee(serial_port)
 
 header = "----------NAVIGATION----------"
@@ -186,9 +186,13 @@ def update(data):
         redrawWaypoints()
         w.update()
         w.show()
-        display1.setText("Wind Angle: " + data["Wind Direction"])
-        display2.setText("Roll, Pitch, Yaw: <" + data["Roll"] + "," +
-                         data["Pitch"] + "," + data["Yaw"] + " >")
+        wind_dir = round(float(data["Wind Direction"]))
+        roll = round(float(data["Roll"]))
+        pitch = round(float(data["Pitch"]))
+        yaw = round(float(data["Yaw"]))
+        display1.setText("Wind Angle: " + str(wind_dir))
+        display2.setText("Roll, Pitch, Yaw: <" + str(roll) + "," + str(pitch) +
+                         "," + str(yaw) + ">")
         # subtract 90 here to get wrt N instead of the x-axis
         wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
         boat_compass.setAngle(-(float(data["Yaw"]) - 90.0))
@@ -275,7 +279,9 @@ def redrawBuoys():
     pen = pg.mkPen((235, 119, 52))
     brush = pg.mkBrush((235, 119, 52))
 
+    listb.clear()
     for buoy in buoys:
+        listb.addItem("({:.2f}, {:.2f})".format(buoy[0], buoy[1]))
         plot.plot([buoy[0]], [buoy[1]],
                   symbolPen=pen,
                   symbolBrush=brush,
@@ -288,8 +294,12 @@ def redrawWaypoints():
     if len(waypoints) < 1:
         return
 
+    listw.clear()
+
     # avoid div by zero
     if len(waypoints) == 1:
+        listw.addItem("({:.2f}, {:.2f})".format(waypoints[0][0],
+                                                waypoints[0][1]))
         pen = pg.mkPen('r')
         brush = pg.mkBrush('r')
         plot.plot([waypoints[0][0]], [waypoints[0][1]],
@@ -304,6 +314,8 @@ def redrawWaypoints():
              for i in range(len(start_color))]
 
     for i in range(len(waypoints)):
+        listw.addItem("({:.2f}, {:.2f})".format(waypoints[i][0],
+                                                waypoints[i][1]))
         color = [
             slope[j] * i + start_color[j] for j in range(len(start_color))
         ]
@@ -345,15 +357,15 @@ w.setLayout(layout)
 
 # layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
 # layout.addWidget(btn2, 0, 0, 1, 2)  # button2 goes in upper-left
-layout.addWidget(btn3, 1, 1)  # button3 goes in upper-left is buoy
+layout.addWidget(btn3, 0, 0, 1, 1)  # button3 goes in upper-left is buoy
 # layout.addWidget(text, 2, 0, 1, 2)  # text edit goes in middle-left
 layout.addWidget(listw, 4, 0)  # list widget goes in bottom-left
 layout.addWidget(listb, 4, 1)  # list widget goes in bottom-left
 layout.addWidget(display1, 6, 0)  # display1 widget goes in bottom-left
 layout.addWidget(display2, 6, 1)  # display2 widget goes in bottom-middle
 layout.addWidget(plot, 0, 3, 5, 1)  # plot goes on right side, spanning 3 rows
-layout.addWidget(wind_compass, 5, 0)
-layout.addWidget(boat_compass, 5, 1)
+layout.addWidget(wind_compass, 5, 0, 1, 1)
+layout.addWidget(boat_compass, 5, 1, 1, 1)
 
 # makes exit a little cleaner
 exit_action = QtGui.QAction("Exit", app)
