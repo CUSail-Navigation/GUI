@@ -91,10 +91,25 @@ void printAllWaypoints() {
   Serial.print(",----------END----------\n");
 }
 
+void printHitWaypoint() {
+  Serial.print("----------HIT----------");
+  
+  coord_xy waypt = getRandPoint();
+  Serial.print(",X:");
+  Serial.print(waypt.x, 4);
+  Serial.print(" Y:");
+  Serial.print(waypt.y, 4);
+
+  Serial.print(",----------END----------\n");
+}
+
 void loop() {
   delay(2500);
 
   if (idx % 20 == 0) {
+    if (idx % 40 == 0) {
+      printHitWaypoint();
+    }
     printAllWaypoints();
     idx = 0;
   }

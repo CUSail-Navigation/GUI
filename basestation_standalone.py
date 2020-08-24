@@ -37,6 +37,7 @@ serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
 header = "----------NAVIGATION----------"
 end = "----------END----------"
 waypt_header = "----------WAYPOINTS----------"
+hit_header = "----------HIT----------"
 # regex = "(?:'rf_data': b')((.|\n)*)'"
 regex = "(b')((.|\n)*)'"
 curPacket = ""
@@ -47,7 +48,7 @@ curPacket = ""
 btn3 = QtGui.QPushButton('Reload Buoys')
 # text = QtGui.QLineEdit('Enter Buoy/Waypoint')
 listw = QtGui.QListWidget()
-labelw = QtGui.QLabel('Waypoints')
+labelw = QtGui.QLabel('Next Waypoints')
 plot = pg.PlotWidget()
 plot.showGrid(True, True, 0.3)
 plot.hideButtons()
@@ -56,6 +57,7 @@ display0 = QtGui.QLabel('Sail, Tail: <x,y>')
 display1 = QtGui.QLabel('Wind Direction: --')
 display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
 display3 = QtGui.QLabel('Heading: --')
+hit_label = QtGui.QLabel("No waypoints hit yet.")
 
 
 class CompassWidget(QWidget):
@@ -192,12 +194,14 @@ def update(data):
         roll = round(float(data["Roll"]))
         pitch = round(float(data["Pitch"]))
         yaw = round(float(data["Yaw"]))
-        display0.setText("Sail, Tail: <" + data["Sail Angle"] + "," +
-                         data["Tail Angle"] + ">")
+        sail = round(float(data["Sail Angle"]))
+        tail = round(float(data["Tail Angle"]))
+        heading = round(float(data["Heading"]))
+        display0.setText("Sail, Tail: <" + str(sail) + "," + str(tail) + ">")
         display1.setText("Wind Angle: " + str(wind_dir))
         display2.setText("Roll, Pitch, Yaw: <" + str(roll) + "," + str(pitch) +
                          "," + str(yaw) + ">")
-        display3.setText("Heading: " + data["Heading"])
+        display3.setText("Heading: " + str(heading))
         # subtract 90 here to get wrt N instead of the x-axis
         sail_compass.setAngle(-(float(data["Sail Angle"]) - 90.0))
         wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
@@ -238,7 +242,7 @@ def run():
 
                 update(data)
 
-            if waypt_header in split_line and end in split_line:
+            elif waypt_header in split_line and end in split_line:
                 data_line = filter(lambda l: l not in [waypt_header, end],
                                    split_line)
 
@@ -251,6 +255,19 @@ def run():
                         _, y = yval.split(":")
                         waypoints.append((float(x), float(y)))
                         redrawWaypoints()
+
+            elif hit_header in split_line and end in split_line:
+                data_line = filter(lambda l: l not in [waypt_header, end],
+                                   split_line)
+
+                for d in data_line:
+                    if d.count(" ") == 1 and d.count(":") == 2:
+                        xval, yval = d.split(" ")
+                        _, x = xval.split(":")
+                        _, y = yval.split(":")
+
+                        hit_label.setText("Hit ({:.2f}, {:.2f})".format(
+                            float(x), float(y)))
         else:
             print("Regex failed to match")
     except KeyboardInterrupt:
@@ -362,6 +379,7 @@ w.setLayout(layout)
 ## Add widgets to the layout in their proper positions
 ## goes row, col, rowspan, colspan
 
+layout.addWidget(hit_label, 0, 0)
 layout.addWidget(btn3, 1, 0)  # button3 goes in upper-left is buoy
 layout.addWidget(labelw, 2, 0)
 layout.addWidget(listw, 3, 0)  # list widget goes in bottom-left
