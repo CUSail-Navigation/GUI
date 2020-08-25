@@ -1,27 +1,30 @@
 import sys
 from PyQt5 import QtGui
-from PyQt5.QtGui import *  # (the example applies equally well to PySide)
+from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox
-# from PyQt5 import QtWidgets
-from PIL import Image
 import pyqtgraph as pg
-import time as time
-import json
-import pprint
-import random
-import PIL
-import numpy
-global past_point
-import os
+import time
+import numpy as np
 import serial
 from xbee import XBee
 import re
 import pprint
-past_point = (0, 0)
+
+# log output to a csv file
+LOG_FLAG = True
+log_name = './gui_output/log-' + time.asctime(time.gmtime()).replace(
+    '  ', '-').replace(' ', '-') + '.csv'
+
+# points to display
+past_points = []
+max_points = 20
+buoys = []
+waypoints = []
+orig_lat = None
+orig_long = None
 
 pg.setConfigOption('background', 'w')
-pp = pprint.PrettyPrinter(indent=4)
 
 ## Always start by initializing Qt (only once per application)
 app = QtGui.QApplication(sys.argv)
@@ -29,51 +32,36 @@ app = QtGui.QApplication(sys.argv)
 ## Define a top-level widget to hold everything
 w = QtGui.QWidget()
 
-serial_port = serial.Serial('COM6', 9600)  #Courtney - /dev/cu.usbmodem14201
+# serial port to read from (different for everyone)
+serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
+                            timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
 xbee = XBee(serial_port)
 
 header = "----------NAVIGATION----------"
 end = "----------END----------"
+waypt_header = "----------WAYPOINTS----------"
+hit_header = "----------HIT----------"
 regex = "(?:'rf_data': b')((.|\n)*)'"
 curPacket = ""
 
 ## Create some widgets to be placed inside
-btn = QtGui.QPushButton('Waypoint')
-btn2 = QtGui.QPushButton('Update')
-btn3 = QtGui.QPushButton('Buoy')
-text = QtGui.QLineEdit('Enter Buoy/Waypoint')
+btn3 = QtGui.QPushButton('Reload Buoys')
 listw = QtGui.QListWidget()
-listb = QtGui.QListWidget()
+labelw = QtGui.QLabel('Next Waypoints')
 plot = pg.PlotWidget()
-plot.setLimits(minXRange=150, maxXRange=150, minYRange=150, maxYRange=150)
-display1 = QtGui.QLabel('Wind Direction: <x,y,z>')
+plot.showGrid(True, True, 0.3)
+plot.hideButtons()
+display0 = QtGui.QLabel('Sail, Tail: <x,y>')
+display1 = QtGui.QLabel('Wind Direction: --')
 display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
-
-#Create Image
-
-#files = os.listdir("/Users/mahikakudlugi/Desktop/CUSail/new_basestation_py/")
-#for file in files:
-#if file is "sailboat_cartoon.jpg":
-# img = Image.open("sailboat_cartoon.jpg")
-# img = img.rotate(90)
-
-#im = Image.open("sailboat_cartoon.jpg")
-#im = numpy.asarray(Image.open('sailboat_cartoon.jpg','rb'))
-#I = numpy.asarray(Image.open('sailboat_cartoon.jpg'))
-#im = Image.fromarray(numpy.uint8(I))
-
-#im = Image.open("/Users/mahikakudlugi/Desktop/CUSail/new_basestation_py/sailboat_cartoon.jpg")
-#np_im = numpy.array(im)
-# im2arr = numpy.array(img)
-# image = pg.image(im2arr)
+display3 = QtGui.QLabel('Heading: --')
+hit_label = QtGui.QLabel("No waypoints hit yet.")
 
 
 class CompassWidget(QWidget):
-
     angleChanged = pyqtSignal(float)
 
     def __init__(self, parent=None):
-
         QWidget.__init__(self, parent)
 
         self._angle = 0.0
@@ -90,7 +78,6 @@ class CompassWidget(QWidget):
         }
 
     def paintEvent(self, event):
-
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -102,7 +89,6 @@ class CompassWidget(QWidget):
         painter.end()
 
     def drawMarkings(self, painter):
-
         painter.save()
         painter.translate(self.width() / 2, self.height() / 2)
         scale = min((self.width() - self._margins) / 120.0,
@@ -118,7 +104,6 @@ class CompassWidget(QWidget):
 
         i = 0
         while i < 360:
-
             if i % 45 == 0:
                 painter.drawLine(0, -40, 0, -50)
                 painter.drawText(-metrics.width(self._pointText[i]) / 2.0, -52,
@@ -132,7 +117,6 @@ class CompassWidget(QWidget):
         painter.restore()
 
     def drawNeedle(self, painter):
-
         painter.save()
         painter.translate(self.width() / 2, self.height() / 2)
         painter.rotate(self._angle)
@@ -173,7 +157,6 @@ class CompassWidget(QWidget):
 
     # @pyqtSlot(float)
     def setAngle(self, angle):
-
         if angle != self._angle:
             self._angle = angle
             self.angleChanged.emit(angle)
@@ -182,214 +165,293 @@ class CompassWidget(QWidget):
     angle = pyqtProperty(float, angle, setAngle)
 
 
+# update the display
 def update(data):
     try:
-        #f = open("live_data.txt")
-        #raw_data = out#list(f)[-1]
-        #data = json.loads(raw_data)
-        #pp.pprint(data)
-        #print("\n")
-        #print(data)
-        x = float(data['X position'][0:-2])
-        y = float(data['Y position'][0:-2])
-        # lati = float(data['latitude'][0:-2])
-        # longi = float(data['longitude'][0:-2])
+        global past_points, max_points, orig_lat, orig_long
+        x = float(data['X position'])
+        y = float(data['Y position'])
 
-        #lati = float(data['Latitude'][0:-2])
+        if LOG_FLAG:
+            with open(log_name, 'a') as log_file:
+                print("{},Boat Position,{},{}".format(
+                    time.asctime(time.gmtime()), x, y),
+                      file=log_file)
 
-        lati = 0 + random.randint(0, 100)
-        #longi = float(data['Longitude'][0:-2])
-        longi = 0 + random.randint(0, 100)
-        # wind_dir = float(data["Wind w.r.t North"][0:-2])
-        # roll = float(data["Roll"][0:-2])
-        # pitch = float(data["Pitch"][0:-2])
-        # boat_dir = float(data["Boat direction"][0:-2])
-        # waypoint_number = int(data["Next Waypoint #"][0:-2])
-        # waypoint_x = (data["Next Waypoint X"])
-        # waypoint_y = (data["Next Waypoint Y"])
-        # waypoint_distance = (data["Distance to Waypoint"][0:-2])
-        # waypoint_angle = (data["Angle to Waypoint"][0:-2])
+        # set the origin and draw buoys if it hasn't already been done
+        if orig_lat is None or orig_long is None:
+            orig_lat = float(data['Origin Latitude'])
+            orig_long = float(data['Origin Longitude'])
+            reloadBuoys()
 
-        # print(x)
-        # print("\n")
-        # print(y)
-        # print("\n")
-        global past_point
-        # listw.addItem(text.text())
-        # arr = text.text().split(',')
-        #x = float(arr[0])
-        #y = float(arr[1])
-        # wind_compass.setAngle(wind_dir)
-        # boat_compass.setAngle(boat_dir)
-        #plot.plot([past_point[0], x], [past_point[1], y])
-        plot.plot([past_point[0], lati], [past_point[1], longi])
-        #past_point = (x,y)
-        past_point = (lati, longi)
+        # only display the last 'max_points' number of points
+        past_points.append((x, y))
+        if len(past_points) > max_points:
+            past_points.pop(0)
+
+        pen = pg.mkPen((49, 69, 122))
+        plot.plot([p[0] for p in past_points], [p[1] for p in past_points],
+                  clear=True,
+                  pen=pen)
+        redrawBuoys()
+        redrawWaypoints()
         w.update()
         w.show()
-        # display1.setText("Wind Angle: " + data["Wind w.r.t North"][0:-2])
-        #display2.setText("Roll, Pitch, Yaw: <"+data["Roll"][0:-2]+","+data["Pitch"][0:-2]+","+data["Boat direction"][0:-2]+" >")
+
+        # extract all of the data
+        wind_dir = round(float(data["Wind Direction"]))
+        roll = round(float(data["Roll"]))
+        pitch = round(float(data["Pitch"]))
+        yaw = round(float(data["Yaw"]))
+        sail = round(float(data["Sail Angle"]))
+        tail = round(float(data["Tail Angle"]))
+        heading = round(float(data["Heading"]))
+
+        # set the labels
+        display0.setText("Sail, Tail: <" + str(sail) + "," + str(tail) + ">")
+        display1.setText("Wind Angle: " + str(wind_dir))
+        display2.setText("Roll, Pitch, Yaw: <" + str(roll) + "," + str(pitch) +
+                         "," + str(yaw) + ">")
+        display3.setText("Heading: " + str(heading))
+
+        # set the compass angles
+        # subtract 90 here to get wrt N instead of the x-axis
+        sail_compass.setAngle(-(float(data["Sail Angle"]) - 90.0))
+        wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
+        boat_compass.setAngle(-(float(data["Yaw"]) - 90.0))
+        angle_compass.setAngle(-(float(data["Heading"]) - 90.0))
     except:
         print("Corrupt Data Dump")
 
 
+# make sure that all necessary keys are there
 def correctData(dataIn):
-    wanted_keys = ["X position", "Y position"]
+    wanted_keys = [
+        "X position", "Y position", "Wind Direction", "Roll", "Pitch", "Yaw",
+        "Sail Angle", "Tail Angle", "Heading"
+    ]
     for key in wanted_keys:
         if key not in dataIn:
             return False
     return True
 
 
+# try to read input and update display
 def run():
-    data = ""
-    global curPacket
     try:
-        print("Waiting...")
-        print("\n")
-        packet = str(xbee.wait_read_frame())
-        print("Packet Recieved!")
-        print("\n")
+        # read a line and make sure it's the correct format
+        packet = str(xbee.wait_read_frame(), timeout=0.25)
         match = re.search(regex, packet)
         if match:
-            print("got match")
-            print("\n")
-            line = match.group(1)
+            # remove line annotations
+            packet = packet.replace("b'", "")
+            packet = packet.replace("'", "")
+            packet = packet.replace("\\n", "")
+            packet = packet.replace("\n", "")
 
-            data += line
+            split_line = packet.split(",")
 
-            curPacket += line
+            # read sensor information and current position
+            if header in split_line and end in split_line:
+                data_line = filter(lambda l: l not in [header, end],
+                                   split_line)
 
-            if (header in curPacket):
-                print("header in")
-                print("\n")
-                header_start = curPacket.find(header)
+                data = {}
+                for d in data_line:
+                    if ":" in d and d.count(":") == 1:
+                        label, value = d.split(":")
+                        data[label] = value
 
-                header_end = header_start + len(header)
+                update(data)
 
-                if (end in curPacket[header_end:-1]):
-                    print("both in")
-                    print("\n")
-                    end_start = curPacket[header_end:-1].find(end)
-                    wanted_data = curPacket[header_end:-1][0:end_start]
+            # read all waypoints
+            elif waypt_header in split_line and end in split_line:
+                data_line = filter(lambda l: l not in [waypt_header, end],
+                                   split_line)
 
-                    curPacket = ""
+                global waypoints
+                waypoints = []
 
-                    cleaned_data = wanted_data.replace("\\n", "")
+                logged_pt = False
+                for d in data_line:
+                    if d.count(" ") == 1 and d.count(":") == 2:
+                        xval, yval = d.split(" ")
+                        _, x = xval.split(":")
+                        _, y = yval.split(":")
+                        waypoints.append((float(x), float(y)))
 
-                    wanted_arr = cleaned_data.split("\\r")
+                        if LOG_FLAG and not logged_pt:
+                            with open(log_name, 'a') as log_file:
+                                print("{},Current Waypoint,{},{}".format(
+                                    time.asctime(time.gmtime()), x, y),
+                                      file=log_file)
+                                logged_pt = True
 
-                    data_assoc = {}
-                    for datum in wanted_arr:
-                        if (":" in datum):
-                            if (datum.count(":") == 1):
-                                #print(datum)
-                                label, value = datum.split(":")
-                                data_assoc[label] = value
+                redrawWaypoints()
 
-                    print("Parse data cycle to GUI")
-                    # Update gui with data
-                    #print (json.dumps(data_assoc))
-                    print("\n\n")
-                    #f.write(json.dumps(data_assoc)+"\n")
-                    #out = json.dumps(data_assoc)+"\n"
-                    #pp.pprint(data_arr)
-                    #print(out)
-                    #data = data[header_end:len(data)]
-                    #print(out)
-                    #print(data)
-                    print(data_assoc)
-                    if (correctData(data_assoc)):
-                        print(data_assoc)
-                        update(data_assoc)
+            # read hit waypoint message
+            elif hit_header in split_line and end in split_line:
+                data_line = filter(lambda l: l not in [waypt_header, end],
+                                   split_line)
+
+                for d in data_line:
+                    if d.count(" ") == 1 and d.count(":") == 2:
+                        xval, yval = d.split(" ")
+                        _, x = xval.split(":")
+                        _, y = yval.split(":")
+
+                        hit_label.setText("Hit ({:.2f}, {:.2f})".format(
+                            float(x), float(y)))
+
+                        if LOG_FLAG:
+                            with open(log_name, 'a') as log_file:
+                                print("{},Hit Waypoint,{},{}".format(
+                                    time.asctime(time.gmtime()), x, y),
+                                      file=log_file)
         else:
             print("Regex failed to match")
-            #print(packet)
     except KeyboardInterrupt:
-        print("bad")
+        exit(0)
 
 
 brush_list = [pg.mkColor(c) for c in "rgbcmykwrg"]
-#pen = random.choice(brush_list)
 
 
-def waypoint():
-    pen = random.choice(brush_list)
-    entry = text.text().strip().replace(" ", "")
+# reload buoys from file
+def reloadBuoys():
+    global buoys
+
+    if orig_lat is None or orig_long is None:
+        print("Origin is not yet defined.")
+        return
+
     try:
-        arr = entry.split(',')
-        if (not isinstance(float(arr[0]), float)
-                or not isinstance(float(arr[1]), float)):
-            raise Exception
-        #if(entry.count(",") > 1):
-        #raise Exception
-        listw.addItem(entry)
-        x = float(arr[0])
-        y = float(arr[1])
+        with open('./gui_input/buoy.csv', 'r') as in_file:
+            lines = in_file.readlines()
 
-        plot.plot([x + 4, x - 4], [y + 4, y - 4], pen='k')
-        plot.plot([x + 4, x - 4], [y - 4, y + 4], pen='k')
-
-    except Exception as e:
-        print("Could not convert string to float: '" + entry + "'")
-
-
-def buoy():
-    pen = random.choice(brush_list)
-    entry = text.text().strip().replace(" ", "")
-    try:
-        arr = entry.split(',')
-        if (not isinstance(float(arr[0]), float)
-                or not isinstance(float(arr[1]), float)):
-            raise Exception
-        #if(entry.count(",") > 1):
-        #raise Exception
-        listb.addItem(entry)
-        x = float(arr[0])
-        y = float(arr[1])
-
-        plot.plot([x + 4, x - 4], [y + 4, y - 4], pen='c')
-        plot.plot([x + 4, x - 4], [y - 4, y + 4], pen='c')
-
-    except Exception as e:
-        print("Could not convert string to float: '" + entry + "'")
+        with open('./gui_output/buoy_xy.csv', 'w') as out_file:
+            buoys = []
+            for line in lines:
+                split_line = line.split(",")
+                if len(split_line) == 2:
+                    x, y = latLongToXY(float(split_line[0]),
+                                       float(split_line[1]))
+                    buoys.append((x, y))
+                    print("{},{}".format(x, y), file=out_file)
+    except:
+        print("Could not read buoys from file.")
 
 
+# redraw buoys on the plot
+def redrawBuoys():
+    global buoys
+    pen = pg.mkPen((235, 119, 52))
+    brush = pg.mkBrush((235, 119, 52))
+
+    for buoy in buoys:
+        plot.plot([buoy[0]], [buoy[1]],
+                  symbolPen=pen,
+                  symbolBrush=brush,
+                  symbol="o")
+
+
+# redraw all waypoints
+def redrawWaypoints():
+    global waypoints
+
+    if len(waypoints) < 1:
+        return
+
+    listw.clear()
+
+    # avoid div by zero
+    if len(waypoints) == 1:
+        listw.addItem("({:.2f}, {:.2f})".format(waypoints[0][0],
+                                                waypoints[0][1]))
+        pen = pg.mkPen('r')
+        brush = pg.mkBrush('r')
+        plot.plot([waypoints[0][0]], [waypoints[0][1]],
+                  symbolPen=pen,
+                  symbolBrush=brush,
+                  symbol="+")
+        return
+
+    # linear interpolation of color (red is the next waypoint, blue is last)
+    start_color = (255, 0, 0)
+    end_color = (0, 70, 255)
+    slope = [(end_color[i] - start_color[i]) / (len(waypoints) - 1)
+             for i in range(len(start_color))]
+
+    for i in range(len(waypoints)):
+        listw.addItem("({:.2f}, {:.2f})".format(waypoints[i][0],
+                                                waypoints[i][1]))
+        color = [
+            slope[j] * i + start_color[j] for j in range(len(start_color))
+        ]
+
+        pen = pg.mkPen(color)
+        brush = pg.mkBrush(color)
+        plot.plot([waypoints[i][0]], [waypoints[i][1]],
+                  symbolPen=pen,
+                  symbolBrush=brush,
+                  symbol="+")
+
+
+# convert a (latitude, longitude) position to (x, y)
+def latLongToXY(lat, long):
+    if orig_lat is None or orig_long is None:
+        return
+
+    shifted_long = long - orig_long
+    shifted_lat = lat - orig_lat
+    deg_to_rad = np.pi / 180.0
+
+    x = 6371000.0 * np.cos(orig_lat * deg_to_rad) * deg_to_rad * shifted_long
+    y = 6371000.0 * deg_to_rad * shifted_lat
+
+    return x, y
+
+
+# compass widgets
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
-# spinBox.valueChanged[float].connect(compass.setAngle)
+sail_compass = CompassWidget()
+angle_compass = CompassWidget()
 
-btn.clicked.connect(waypoint)
-#btn2.clicked.connect(update)
-btn3.clicked.connect(buoy)
+# link reload buoys button to function
+btn3.clicked.connect(reloadBuoys)
+
 ## Create a grid layout to manage the widgets size and position
 layout = QtGui.QGridLayout()
 w.setLayout(layout)
 
 ## Add widgets to the layout in their proper positions
-
 ## goes row, col, rowspan, colspan
+layout.addWidget(hit_label, 0, 0)
+layout.addWidget(btn3, 1, 0)
+layout.addWidget(labelw, 2, 0)
+layout.addWidget(listw, 3, 0)
+layout.addWidget(display0, 6, 0)
+layout.addWidget(display1, 6, 1)
+layout.addWidget(display2, 6, 2)
+layout.addWidget(display3, 6, 3)
+layout.addWidget(plot, 0, 1, 5, 3)
+layout.addWidget(sail_compass, 5, 0, 1, 1)
+layout.addWidget(wind_compass, 5, 1, 1, 1)
+layout.addWidget(boat_compass, 5, 2, 1, 1)
+layout.addWidget(angle_compass, 5, 3, 1, 1)
 
-layout.addWidget(btn, 1, 0)  # button goes in mid-left is waypoints
-layout.addWidget(btn2, 0, 0, 1, 2)  # button2 goes in upper-left
-layout.addWidget(btn3, 1, 1)  # button3 goes in upper-left is buoy
-layout.addWidget(text, 2, 0, 1, 2)  # text edit goes in middle-left
-layout.addWidget(listw, 4, 0)  # list widget goes in bottom-left
-layout.addWidget(listb, 4, 1)  # list widget goes in bottom-left
-layout.addWidget(display1, 6, 0)  # display1 widget goes in bottom-left
-layout.addWidget(display2, 6, 1)  # display2 widget goes in bottom-middle
-layout.addWidget(plot, 0, 3, 5, 1)  # plot goes on right side, spanning 3 rows
-layout.addWidget(wind_compass, 5, 0)
-layout.addWidget(boat_compass, 5, 1)
-# layout.addWidget(image, 0, 3, 5, 1)
+# makes exit a little cleaner
+exit_action = QtGui.QAction("Exit", app)
+exit_action.setShortcut("Ctrl+Q")
+exit_action.triggered.connect(lambda: exit(0))
 
-#layout.addWidget()
-# layout.addWidget(spinBox, 5, 0)
 ## Display the widget as a new window
+w.setWindowTitle("CUSail Basestation")
 w.show()
 
 w.timer = QTimer()
-w.timer.setInterval(100)
+w.timer.setInterval(1000)  # once a second should be good enough
 w.timer.timeout.connect(run)
 w.timer.start()
 
