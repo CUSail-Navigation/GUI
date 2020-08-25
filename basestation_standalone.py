@@ -4,29 +4,27 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox
 import pyqtgraph as pg
-import time as time
-import pprint
-import random
+import time
 import numpy as np
-import os
 import serial
 # from xbee import XBee
 import re
 import pprint
 
+# log output to a csv file
 LOG_FLAG = True
 log_name = './gui_output/log-' + time.asctime(time.gmtime()).replace(
     '  ', '-').replace(' ', '-') + '.csv'
 
+# points to display
 past_points = []
 max_points = 20
-orig_lat = None
-orig_long = None
 buoys = []
 waypoints = []
+orig_lat = None
+orig_long = None
 
 pg.setConfigOption('background', 'w')
-pp = pprint.PrettyPrinter(indent=4)
 
 ## Always start by initializing Qt (only once per application)
 app = QtGui.QApplication(sys.argv)
@@ -34,6 +32,7 @@ app = QtGui.QApplication(sys.argv)
 ## Define a top-level widget to hold everything
 w = QtGui.QWidget()
 
+# serial port to read from (different for everyone)
 serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
                             timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
 # xbee = XBee(serial_port)
@@ -167,6 +166,7 @@ class CompassWidget(QWidget):
     angle = pyqtProperty(float, angle, setAngle)
 
 
+# update the display
 def update(data):
     try:
         global past_points, max_points, orig_lat, orig_long
@@ -179,11 +179,13 @@ def update(data):
                     time.asctime(time.gmtime()), x, y),
                       file=log_file)
 
+        # set the origin and draw buoys if it hasn't already been done
         if orig_lat is None or orig_long is None:
             orig_lat = float(data['Origin Latitude'])
             orig_long = float(data['Origin Longitude'])
             reloadBuoys()
 
+        # only display the last 'max_points' number of points
         past_points.append((x, y))
         if len(past_points) > max_points:
             past_points.pop(0)
@@ -197,6 +199,7 @@ def update(data):
         w.update()
         w.show()
 
+        # extract all of the data
         wind_dir = round(float(data["Wind Direction"]))
         roll = round(float(data["Roll"]))
         pitch = round(float(data["Pitch"]))
@@ -205,12 +208,14 @@ def update(data):
         tail = round(float(data["Tail Angle"]))
         heading = round(float(data["Heading"]))
 
+        # set the labels
         display0.setText("Sail, Tail: <" + str(sail) + "," + str(tail) + ">")
         display1.setText("Wind Angle: " + str(wind_dir))
         display2.setText("Roll, Pitch, Yaw: <" + str(roll) + "," + str(pitch) +
                          "," + str(yaw) + ">")
         display3.setText("Heading: " + str(heading))
 
+        # set the compass angles
         # subtract 90 here to get wrt N instead of the x-axis
         sail_compass.setAngle(-(float(data["Sail Angle"]) - 90.0))
         wind_compass.setAngle(-(float(data["Wind Direction"]) - 90.0))
@@ -220,25 +225,34 @@ def update(data):
         print("Corrupt Data Dump")
 
 
+# make sure that all necessary keys are there
 def correctData(dataIn):
-    wanted_keys = ["X position", "Y position"]
+    wanted_keys = [
+        "X position", "Y position", "Wind Direction", "Roll", "Pitch", "Yaw",
+        "Sail Angle", "Tail Angle", "Heading"
+    ]
     for key in wanted_keys:
         if key not in dataIn:
             return False
     return True
 
 
+# try to read input and update display
 def run():
     try:
+        # read a line and make sure it's the correct format
         packet = str(serial_port.readline())
         match = re.search(regex, packet)
         if match:
+            # remove line annotations
             packet = packet.replace("b'", "")
             packet = packet.replace("'", "")
             packet = packet.replace("\\n", "")
             packet = packet.replace("\n", "")
 
             split_line = packet.split(",")
+
+            # read sensor information and current position
             if header in split_line and end in split_line:
                 data_line = filter(lambda l: l not in [header, end],
                                    split_line)
@@ -251,6 +265,7 @@ def run():
 
                 update(data)
 
+            # read all waypoints
             elif waypt_header in split_line and end in split_line:
                 data_line = filter(lambda l: l not in [waypt_header, end],
                                    split_line)
@@ -275,6 +290,7 @@ def run():
 
                 redrawWaypoints()
 
+            # read hit waypoint message
             elif hit_header in split_line and end in split_line:
                 data_line = filter(lambda l: l not in [waypt_header, end],
                                    split_line)
@@ -302,6 +318,7 @@ def run():
 brush_list = [pg.mkColor(c) for c in "rgbcmykwrg"]
 
 
+# reload buoys from file
 def reloadBuoys():
     global buoys
 
@@ -326,6 +343,7 @@ def reloadBuoys():
         print("Could not read buoys from file.")
 
 
+# redraw buoys on the plot
 def redrawBuoys():
     global buoys
     pen = pg.mkPen((235, 119, 52))
@@ -338,6 +356,7 @@ def redrawBuoys():
                   symbol="o")
 
 
+# redraw all waypoints
 def redrawWaypoints():
     global waypoints
 
@@ -358,6 +377,7 @@ def redrawWaypoints():
                   symbol="+")
         return
 
+    # linear interpolation of color (red is the next waypoint, blue is last)
     start_color = (255, 0, 0)
     end_color = (0, 70, 255)
     slope = [(end_color[i] - start_color[i]) / (len(waypoints) - 1)
@@ -378,6 +398,7 @@ def redrawWaypoints():
                   symbol="+")
 
 
+# convert a (latitude, longitude) position to (x, y)
 def latLongToXY(lat, long):
     if orig_lat is None or orig_long is None:
         return
@@ -392,11 +413,13 @@ def latLongToXY(lat, long):
     return x, y
 
 
+# compass widgets
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
 sail_compass = CompassWidget()
 angle_compass = CompassWidget()
 
+# link reload buoys button to function
 btn3.clicked.connect(reloadBuoys)
 
 ## Create a grid layout to manage the widgets size and position
@@ -406,14 +429,14 @@ w.setLayout(layout)
 ## Add widgets to the layout in their proper positions
 ## goes row, col, rowspan, colspan
 layout.addWidget(hit_label, 0, 0)
-layout.addWidget(btn3, 1, 0)  # button3 goes in upper-left is buoy
+layout.addWidget(btn3, 1, 0)
 layout.addWidget(labelw, 2, 0)
-layout.addWidget(listw, 3, 0)  # list widget goes in bottom-left
+layout.addWidget(listw, 3, 0)
 layout.addWidget(display0, 6, 0)
-layout.addWidget(display1, 6, 1)  # display1 widget goes in bottom-left
-layout.addWidget(display2, 6, 2)  # display2 widget goes in bottom-middle
+layout.addWidget(display1, 6, 1)
+layout.addWidget(display2, 6, 2)
 layout.addWidget(display3, 6, 3)
-layout.addWidget(plot, 0, 1, 5, 3)  # plot goes on right side, spanning 3 rows
+layout.addWidget(plot, 0, 1, 5, 3)
 layout.addWidget(sail_compass, 5, 0, 1, 1)
 layout.addWidget(wind_compass, 5, 1, 1, 1)
 layout.addWidget(boat_compass, 5, 2, 1, 1)
