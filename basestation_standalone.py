@@ -14,6 +14,10 @@ import serial
 import re
 import pprint
 
+LOG_FLAG = True
+log_name = './gui_output/log-' + time.asctime(time.gmtime()).replace(
+    '  ', '-').replace(' ', '-') + '.csv'
+
 past_points = []
 max_points = 20
 orig_lat = None
@@ -169,6 +173,12 @@ def update(data):
         x = float(data['X position'])
         y = float(data['Y position'])
 
+        if LOG_FLAG:
+            with open(log_name, 'a') as log_file:
+                print("{},Boat Position,{},{}".format(
+                    time.asctime(time.gmtime()), x, y),
+                      file=log_file)
+
         if orig_lat is None or orig_long is None:
             orig_lat = float(data['Origin Latitude'])
             orig_long = float(data['Origin Longitude'])
@@ -247,13 +257,23 @@ def run():
 
                 global waypoints
                 waypoints = []
+
+                logged_pt = False
                 for d in data_line:
                     if d.count(" ") == 1 and d.count(":") == 2:
                         xval, yval = d.split(" ")
                         _, x = xval.split(":")
                         _, y = yval.split(":")
                         waypoints.append((float(x), float(y)))
-                        redrawWaypoints()
+
+                        if LOG_FLAG and not logged_pt:
+                            with open(log_name, 'a') as log_file:
+                                print("{},Current Waypoint,{},{}".format(
+                                    time.asctime(time.gmtime()), x, y),
+                                      file=log_file)
+                                logged_pt = True
+
+                redrawWaypoints()
 
             elif hit_header in split_line and end in split_line:
                 data_line = filter(lambda l: l not in [waypt_header, end],
@@ -267,6 +287,12 @@ def run():
 
                         hit_label.setText("Hit ({:.2f}, {:.2f})".format(
                             float(x), float(y)))
+
+                        if LOG_FLAG:
+                            with open(log_name, 'a') as log_file:
+                                print("{},Hit Waypoint,{},{}".format(
+                                    time.asctime(time.gmtime()), x, y),
+                                      file=log_file)
         else:
             print("Regex failed to match")
     except KeyboardInterrupt:
@@ -284,15 +310,18 @@ def reloadBuoys():
         return
 
     try:
-        with open('./gui_input/buoy.csv', 'r') as file:
-            lines = file.readlines()
+        with open('./gui_input/buoy.csv', 'r') as in_file:
+            lines = in_file.readlines()
 
-        buoys = []
-        for line in lines:
-            split_line = line.split(",")
-            if len(split_line) == 2:
-                x, y = latLongToXY(float(split_line[0]), float(split_line[1]))
-                buoys.append((x, y))
+        with open('./gui_output/buoy_xy.csv', 'w') as out_file:
+            buoys = []
+            for line in lines:
+                split_line = line.split(",")
+                if len(split_line) == 2:
+                    x, y = latLongToXY(float(split_line[0]),
+                                       float(split_line[1]))
+                    buoys.append((x, y))
+                    print("{},{}".format(x, y), file=out_file)
     except:
         print("Could not read buoys from file.")
 
