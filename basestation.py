@@ -172,12 +172,6 @@ def update(data):
         x = float(data['X position'])
         y = float(data['Y position'])
 
-        if LOG_FLAG:
-            with open(log_name, 'a') as log_file:
-                print("{},Boat Position,{},{}".format(
-                    time.asctime(time.gmtime()), x, y),
-                      file=log_file)
-
         # set the origin and draw buoys if it hasn't already been done
         if orig_lat is None or orig_long is None:
             orig_lat = float(data['Origin Latitude'])
@@ -206,6 +200,31 @@ def update(data):
         sail = round(float(data["Sail Angle"]))
         tail = round(float(data["Tail Angle"]))
         heading = round(float(data["Heading"]))
+
+        # log to a file
+        if LOG_FLAG:
+            with open(log_name, 'a') as log_file:
+                print("{},Boat Position,{},{}".format(
+                    time.asctime(time.gmtime()), x, y),
+                      file=log_file)
+                print("{},Wind Direction,{}".format(
+                    time.asctime(time.gmtime()), wind_dir),
+                      file=log_file)
+                print("{},Roll,{}".format(time.asctime(time.gmtime()), roll),
+                      file=log_file)
+                print("{},Pitch,{}".format(time.asctime(time.gmtime()), pitch),
+                      file=log_file)
+                print("{},Yaw,{}".format(time.asctime(time.gmtime()), yaw),
+                      file=log_file)
+                print("{},Sail Angle,{}".format(time.asctime(time.gmtime()),
+                                                sail),
+                      file=log_file)
+                print("{},Tail Angle,{}".format(time.asctime(time.gmtime()),
+                                                tail),
+                      file=log_file)
+                print("{},Heading Angle,{}".format(time.asctime(time.gmtime()),
+                                                   heading),
+                      file=log_file)
 
         # set the labels
         display0.setText("Sail, Tail: <" + str(sail) + "," + str(tail) + ">")
