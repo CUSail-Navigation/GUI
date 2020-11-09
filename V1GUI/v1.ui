@@ -65,7 +65,7 @@ p, li { white-space: pre-wrap; }
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:12pt;&quot;&gt;Angle: &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber">
+   <widget class="QLCDNumber" name="sail">
     <property name="geometry">
      <rect>
       <x>100</x>
@@ -78,7 +78,7 @@ p, li { white-space: pre-wrap; }
      <double>150.000000000000000</double>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_2">
+   <widget class="QLCDNumber" name="tail">
     <property name="geometry">
      <rect>
       <x>100</x>
@@ -94,7 +94,7 @@ p, li { white-space: pre-wrap; }
      <number>30</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_3">
+   <widget class="QLCDNumber" name="angle">
     <property name="geometry">
      <rect>
       <x>100</x>
@@ -144,7 +144,7 @@ p, li { white-space: pre-wrap; }
 &lt;p align=&quot;center&quot; style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:12pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_4">
+   <widget class="QLCDNumber" name="wind_direction">
     <property name="geometry">
      <rect>
       <x>660</x>
@@ -157,7 +157,7 @@ p, li { white-space: pre-wrap; }
      <number>135</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_5">
+   <widget class="QLCDNumber" name="wind_speed">
     <property name="geometry">
      <rect>
       <x>660</x>
@@ -173,7 +173,7 @@ p, li { white-space: pre-wrap; }
      <number>10</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_6">
+   <widget class="QLCDNumber" name="yaw">
     <property name="geometry">
      <rect>
       <x>660</x>
@@ -189,7 +189,7 @@ p, li { white-space: pre-wrap; }
      <number>100</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_7">
+   <widget class="QLCDNumber" name="roll">
     <property name="geometry">
      <rect>
       <x>660</x>
@@ -205,7 +205,7 @@ p, li { white-space: pre-wrap; }
      <number>10</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_8">
+   <widget class="QLCDNumber" name="pitch">
     <property name="geometry">
      <rect>
       <x>660</x>
@@ -221,7 +221,7 @@ p, li { white-space: pre-wrap; }
      <number>5</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_9">
+   <widget class="QLCDNumber" name="waypoint_x">
     <property name="geometry">
      <rect>
       <x>630</x>
@@ -237,7 +237,7 @@ p, li { white-space: pre-wrap; }
      <number>12</number>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_10">
+   <widget class="QLCDNumber" name="waypoint_y">
     <property name="geometry">
      <rect>
       <x>700</x>
@@ -253,7 +253,7 @@ p, li { white-space: pre-wrap; }
      <number>15</number>
     </property>
    </widget>
-   <widget class="QDial" name="dial">
+   <widget class="QDial" name="d_o_m_dial">
     <property name="enabled">
      <bool>false</bool>
     </property>
@@ -296,7 +296,7 @@ p, li { white-space: pre-wrap; }
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QDial" name="dial_2">
+   <widget class="QDial" name="wind_dial">
     <property name="enabled">
      <bool>false</bool>
     </property>
@@ -373,7 +373,7 @@ p, li { white-space: pre-wrap; }
 &lt;p align=&quot;center&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:12pt;&quot;&gt;Direction of Motion&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
-   <widget class="QLCDNumber" name="lcdNumber_11">
+   <widget class="QLCDNumber" name="d_o_m">
     <property name="geometry">
      <rect>
       <x>380</x>
@@ -403,21 +403,21 @@ p, li { white-space: pre-wrap; }
    <zorder>textBrowser</zorder>
    <zorder>textBrowser_2</zorder>
    <zorder>textBrowser_3</zorder>
-   <zorder>lcdNumber</zorder>
-   <zorder>lcdNumber_2</zorder>
-   <zorder>lcdNumber_3</zorder>
+   <zorder>sail</zorder>
+   <zorder>tail</zorder>
+   <zorder>angle</zorder>
    <zorder>textBrowser_6</zorder>
-   <zorder>lcdNumber_4</zorder>
-   <zorder>lcdNumber_5</zorder>
-   <zorder>lcdNumber_6</zorder>
-   <zorder>lcdNumber_7</zorder>
-   <zorder>lcdNumber_8</zorder>
-   <zorder>lcdNumber_9</zorder>
-   <zorder>lcdNumber_10</zorder>
-   <zorder>dial</zorder>
+   <zorder>wind_direction</zorder>
+   <zorder>wind_speed</zorder>
+   <zorder>yaw</zorder>
+   <zorder>roll</zorder>
+   <zorder>pitch</zorder>
+   <zorder>waypoint_x</zorder>
+   <zorder>waypoint_y</zorder>
+   <zorder>d_o_m_dial</zorder>
    <zorder>textBrowser_4</zorder>
-   <zorder>dial_2</zorder>
-   <zorder>lcdNumber_11</zorder>
+   <zorder>wind_dial</zorder>
+   <zorder>d_o_m</zorder>
    <zorder>label</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
