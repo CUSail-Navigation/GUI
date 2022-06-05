@@ -11,6 +11,9 @@ import serial
 import re
 import pprint
 
+# manual control mode indicator
+manual_mode = False
+
 # log output to a csv file
 LOG_FLAG = True
 log_name = './gui_output/log-' + time.asctime(time.gmtime()).replace(
@@ -41,11 +44,25 @@ header = "----------NAVIGATION----------"
 end = "----------END----------"
 waypt_header = "----------WAYPOINTS----------"
 hit_header = "----------HIT----------"
-# regex = "(?:'rf_data': b')((.|\n)*)'"
 regex = "(b')((.|\n)*)'"
 curPacket = ""
 
 ## Create some widgets to be placed inside
+kill_button = QtGui.QPushButton('Kill Algorithm')
+manual_button = QtGui.QPushButton('Manual Override')
+send_button = QtGui.QPushButton('Send Angles')
+main_angle_input = QtGui.QSpinBox(maximum=500, minimum=-500)
+tail_angle_input = QtGui.QSpinBox(maximum=500, minimum=-500)
+main_label = QtGui.QLabel('Sail Angle:')
+tail_label = QtGui.QLabel('Tail Angle:')
+
+main_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+tail_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+main_angle_input.setDisabled(True)
+tail_angle_input.setDisabled(True)
+send_button.setDisabled(True)
+
 btn3 = QtGui.QPushButton('Reload Buoys')
 listw = QtGui.QListWidget()
 labelw = QtGui.QLabel('Next Waypoints')
@@ -432,6 +449,45 @@ def latLongToXY(lat, long):
     return x, y
 
 
+# send the quit signal back to the boat
+def killswitch():
+    print("Sending quit command...")
+    serial_port.write("q\n".encode('utf-8'))
+    serial_port.flush()
+
+
+def manual_control():
+    global manual_mode
+
+    if manual_mode:
+        # disengage manual control
+        serial_port.write('a\n'.encode('utf-8'))
+        serial_port.flush()
+
+        manual_mode = False
+        manual_button.setText("Manual Override")
+        main_angle_input.setDisabled(True)
+        tail_angle_input.setDisabled(True)
+        send_button.setDisabled(True)
+    else:
+        serial_port.write('o\n'.encode('utf-8'))
+        serial_port.flush()
+
+        manual_mode = True
+        manual_button.setText("Engage Autopilot")
+        main_angle_input.setDisabled(False)
+        tail_angle_input.setDisabled(False)
+        send_button.setDisabled(False)
+
+
+def send_angles():
+    main_angle = main_angle_input.value()
+    tail_angle = tail_angle_input.value()
+    print("Sending anlges: {} {}".format(main_angle, tail_angle))
+    serial_port.write("{} {}\n".format(main_angle, tail_angle).encode('utf-8'))
+    serial_port.flush()
+
+
 # compass widgets
 wind_compass = CompassWidget()
 boat_compass = CompassWidget()
@@ -441,16 +497,24 @@ angle_compass = CompassWidget()
 # link reload buoys button to function
 btn3.clicked.connect(reloadBuoys)
 
+# link killswitch to function to send quit command
+kill_button.clicked.connect(killswitch)
+
+# manual control
+manual_button.clicked.connect(manual_control)
+send_button.clicked.connect(send_angles)
+
 ## Create a grid layout to manage the widgets size and position
 layout = QtGui.QGridLayout()
 w.setLayout(layout)
 
 ## Add widgets to the layout in their proper positions
 ## goes row, col, rowspan, colspan
-layout.addWidget(hit_label, 0, 0)
-layout.addWidget(btn3, 1, 0)
-layout.addWidget(labelw, 2, 0)
-layout.addWidget(listw, 3, 0)
+layout.addWidget(kill_button, 0, 0)
+layout.addWidget(hit_label, 1, 0)
+layout.addWidget(btn3, 2, 0)
+layout.addWidget(labelw, 3, 0)
+layout.addWidget(listw, 4, 0)
 layout.addWidget(display0, 6, 0)
 layout.addWidget(display1, 6, 1)
 layout.addWidget(display2, 6, 2)
@@ -460,6 +524,19 @@ layout.addWidget(sail_compass, 5, 0, 1, 1)
 layout.addWidget(wind_compass, 5, 1, 1, 1)
 layout.addWidget(boat_compass, 5, 2, 1, 1)
 layout.addWidget(angle_compass, 5, 3, 1, 1)
+
+manual_widget = QWidget()
+hlayout = QtGui.QHBoxLayout()
+manual_widget.setLayout(hlayout)
+
+hlayout.addWidget(manual_button)
+hlayout.addWidget(main_label)
+hlayout.addWidget(main_angle_input)
+hlayout.addWidget(tail_label)
+hlayout.addWidget(tail_angle_input)
+hlayout.addWidget(send_button)
+
+layout.addWidget(manual_widget, 7, 0, 1, 4)
 
 # makes exit a little cleaner
 exit_action = QtGui.QAction("Exit", app)
