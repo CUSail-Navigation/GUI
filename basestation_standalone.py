@@ -452,7 +452,7 @@ def latLongToXY(lat, long):
 # send the quit signal back to the boat
 def killswitch():
     print("Sending quit command...")
-    serial_port.write("q\n".encode('utf-8'))
+    serial_port.write(0x03)
     serial_port.flush()
 
 
