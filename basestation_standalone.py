@@ -59,8 +59,8 @@ curPacket = ""
 kill_button = QPushButton('Kill Algorithm')
 manual_button = QPushButton('Manual Override')
 send_button = QPushButton('Send Angles')
-main_angle_input = QSpinBox(maximum=500, minimum=-500)
-tail_angle_input = QSpinBox(maximum=500, minimum=-500)
+main_angle_input = QSpinBox(maximum=90, minimum=-90)
+tail_angle_input = QSpinBox(maximum=30, minimum=-30)
 main_label = QLabel('Sail Angle:')
 tail_label = QLabel('Tail Angle:')
 
@@ -357,8 +357,9 @@ def run():
             print("Regex failed to match")
 
         if(manual_mode and controller != False):
-            main_angle_input.setValue(controller.axis_l.x * 90)
-            tail_angle_input.setValue(controller.axis_r.x * 30)
+            #main_angle_input.setValue(main_angle_input.value() + controller.axis_l.x * 90)
+            main_angle_input.setValue(round(main_angle_input.value() + controller.axis_l.x * 50))
+            tail_angle_input.setValue(round(controller.axis_r.x * 30))
 
     except KeyboardInterrupt:
         exit(0)
