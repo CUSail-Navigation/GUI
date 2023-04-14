@@ -1,8 +1,9 @@
 import sys
+from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox
+
 import pyqtgraph as pg
 import time
 import numpy as np
@@ -10,6 +11,8 @@ import serial
 from xbee import XBee
 import re
 import pprint
+import signal
+from xbox360controller import Xbox360Controller
 
 # log output to a csv file
 LOG_FLAG = True
@@ -27,13 +30,13 @@ orig_long = None
 pg.setConfigOption('background', 'w')
 
 ## Always start by initializing Qt (only once per application)
-app = QtGui.QApplication(sys.argv)
+app = QApplication(sys.argv)
 
 ## Define a top-level widget to hold everything
-w = QtGui.QWidget()
+w = QWidget()
 
 # serial port to read from (different for everyone)
-serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
+serial_port = serial.Serial('/dev/ttyUSB0', 9600,
                             timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
 xbee = XBee(serial_port)
 
@@ -45,17 +48,17 @@ regex = "(?:'rf_data': b')((.|\n)*)'"
 curPacket = ""
 
 ## Create some widgets to be placed inside
-btn3 = QtGui.QPushButton('Reload Buoys')
-listw = QtGui.QListWidget()
-labelw = QtGui.QLabel('Next Waypoints')
+btn3 = QPushButton('Reload Buoys')
+listw = QListWidget()
+labelw = QLabel('Next Waypoints')
 plot = pg.PlotWidget()
 plot.showGrid(True, True, 0.3)
 plot.hideButtons()
-display0 = QtGui.QLabel('Sail, Tail: <x,y>')
-display1 = QtGui.QLabel('Wind Direction: --')
-display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
-display3 = QtGui.QLabel('Heading: --')
-hit_label = QtGui.QLabel("No waypoints hit yet.")
+display0 = QLabel('Sail, Tail: <x,y>')
+display1 = QLabel('Wind Direction: --')
+display2 = QLabel('Roll, Pitch, Yaw: <x,y,z>')
+display3 = QLabel('Heading: --')
+hit_label = QLabel("No waypoints hit yet.")
 
 
 class CompassWidget(QWidget):
@@ -441,7 +444,7 @@ angle_compass = CompassWidget()
 btn3.clicked.connect(reloadBuoys)
 
 ## Create a grid layout to manage the widgets size and position
-layout = QtGui.QGridLayout()
+layout = QGridLayout()
 w.setLayout(layout)
 
 ## Add widgets to the layout in their proper positions
@@ -461,7 +464,7 @@ layout.addWidget(boat_compass, 5, 2, 1, 1)
 layout.addWidget(angle_compass, 5, 3, 1, 1)
 
 # makes exit a little cleaner
-exit_action = QtGui.QAction("Exit", app)
+exit_action = QAction("Exit", app)
 exit_action.setShortcut("Ctrl+Q")
 exit_action.triggered.connect(lambda: exit(0))
 

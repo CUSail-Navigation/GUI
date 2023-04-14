@@ -1,18 +1,26 @@
 import sys
+from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-from PyQt5.QtWidgets import QApplication, QWidget, QSpinBox
+
 import pyqtgraph as pg
 import time
 import numpy as np
 import serial
-# from xbee import XBee
+from xbee import XBee
 import re
 import pprint
+import signal
+from xbox360controller import Xbox360Controller
 
 # manual control mode indicator
 manual_mode = False
+
+try:
+    controller = Xbox360Controller(0, axis_threshold=0.0001)
+except:
+    controller = False
 
 # log output to a csv file
 LOG_FLAG = True
@@ -30,13 +38,13 @@ orig_long = None
 pg.setConfigOption('background', 'w')
 
 ## Always start by initializing Qt (only once per application)
-app = QtGui.QApplication(sys.argv)
+app = QApplication(sys.argv)
 
 ## Define a top-level widget to hold everything
-w = QtGui.QWidget()
+w = QWidget()
 
 # serial port to read from (different for everyone)
-serial_port = serial.Serial('/dev/cu.usbmodem14201', 9600,
+serial_port = serial.Serial('/dev/ttyUSB0', 9600,
                             timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
 # xbee = XBee(serial_port)
 
@@ -48,13 +56,13 @@ regex = "(b')((.|\n)*)'"
 curPacket = ""
 
 ## Create some widgets to be placed inside
-kill_button = QtGui.QPushButton('Kill Algorithm')
-manual_button = QtGui.QPushButton('Manual Override')
-send_button = QtGui.QPushButton('Send Angles')
-main_angle_input = QtGui.QSpinBox(maximum=500, minimum=-500)
-tail_angle_input = QtGui.QSpinBox(maximum=500, minimum=-500)
-main_label = QtGui.QLabel('Sail Angle:')
-tail_label = QtGui.QLabel('Tail Angle:')
+kill_button = QPushButton('Kill Algorithm')
+manual_button = QPushButton('Manual Override')
+send_button = QPushButton('Send Angles')
+main_angle_input = QSpinBox(maximum=500, minimum=-500)
+tail_angle_input = QSpinBox(maximum=500, minimum=-500)
+main_label = QLabel('Sail Angle:')
+tail_label = QLabel('Tail Angle:')
 
 main_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 tail_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -63,17 +71,17 @@ main_angle_input.setDisabled(True)
 tail_angle_input.setDisabled(True)
 send_button.setDisabled(True)
 
-btn3 = QtGui.QPushButton('Reload Buoys')
-listw = QtGui.QListWidget()
-labelw = QtGui.QLabel('Next Waypoints')
+btn3 = QPushButton('Reload Buoys')
+listw = QListWidget()
+labelw = QLabel('Next Waypoints')
 plot = pg.PlotWidget()
 plot.showGrid(True, True, 0.3)
 plot.hideButtons()
-display0 = QtGui.QLabel('Sail, Tail: <x,y>')
-display1 = QtGui.QLabel('Wind Direction: --')
-display2 = QtGui.QLabel('Roll, Pitch, Yaw: <x,y,z>')
-display3 = QtGui.QLabel('Heading: --')
-hit_label = QtGui.QLabel("No waypoints hit yet.")
+display0 = QLabel('Sail, Tail: <x,y>')
+display1 = QLabel('Wind Direction: --')
+display2 = QLabel('Roll, Pitch, Yaw: <x,y,z>')
+display3 = QLabel('Heading: --')
+hit_label = QLabel("No waypoints hit yet.")
 
 
 class CompassWidget(QWidget):
@@ -347,6 +355,11 @@ def run():
                                       file=log_file)
         else:
             print("Regex failed to match")
+
+        if(manual_mode and controller != False):
+            main_angle_input.setValue(controller.axis_l.x * 90)
+            tail_angle_input.setValue(controller.axis_r.x * 30)
+
     except KeyboardInterrupt:
         exit(0)
 
@@ -480,6 +493,29 @@ def manual_control():
         send_button.setDisabled(False)
 
 
+        # Left and right axis move event
+        if controller != False:
+            controller.axis_l.when_moved = on_main_axis_moved
+            controller.axis_r.when_moved = on_tail_axis_moved
+
+
+
+def on_main_axis_moved(axis):
+    print('Axis {0} moved to {1} {2}'.format(axis.name, axis.x, axis.y))
+    #main_angle_input.setValue(axis.x * 90)
+
+    send_angles()
+
+def on_tail_axis_moved(axis):
+    print('Axis {0} moved to {1} {2}'.format(axis.name, axis.x, axis.y))
+
+    #tail_angle_input.setValue(axis.x * 30)
+    send_angles()
+
+def on_a_button_pressed(button):
+    main_angle_input.setValue(0) 
+    tail_angle_input.setValue(0)
+
 def send_angles():
     main_angle = main_angle_input.value()
     tail_angle = tail_angle_input.value()
@@ -505,7 +541,7 @@ manual_button.clicked.connect(manual_control)
 send_button.clicked.connect(send_angles)
 
 ## Create a grid layout to manage the widgets size and position
-layout = QtGui.QGridLayout()
+layout = QGridLayout()
 w.setLayout(layout)
 
 ## Add widgets to the layout in their proper positions
@@ -526,7 +562,7 @@ layout.addWidget(boat_compass, 5, 2, 1, 1)
 layout.addWidget(angle_compass, 5, 3, 1, 1)
 
 manual_widget = QWidget()
-hlayout = QtGui.QHBoxLayout()
+hlayout = QHBoxLayout()
 manual_widget.setLayout(hlayout)
 
 hlayout.addWidget(manual_button)
@@ -539,7 +575,7 @@ hlayout.addWidget(send_button)
 layout.addWidget(manual_widget, 7, 0, 1, 4)
 
 # makes exit a little cleaner
-exit_action = QtGui.QAction("Exit", app)
+exit_action = QAction("Exit", app)
 exit_action.setShortcut("Ctrl+Q")
 exit_action.triggered.connect(lambda: exit(0))
 
