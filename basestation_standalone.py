@@ -8,11 +8,20 @@ import pyqtgraph as pg
 import time
 import numpy as np
 import serial
-from xbee import XBee
 import re
-import pprint
-import signal
 from xbox360controller import Xbox360Controller
+from train_model import *
+
+# train the RL model?
+TRAIN_FLAG = True
+actor_path = ""
+critic_path = ""
+
+trainer = None
+prev_data = None
+terminal = False
+if TRAIN_FLAG:
+    trainer = RealWorldTrain(actor_path, critic_path)
 
 # manual control mode indicator
 manual_mode = False
@@ -46,7 +55,6 @@ w = QWidget()
 # serial port to read from (different for everyone)
 serial_port = serial.Serial('/dev/ttyUSB0', 9600,
                             timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
-# xbee = XBee(serial_port)
 
 header = "----------NAVIGATION----------"
 end = "----------END----------"
@@ -132,8 +140,8 @@ class CompassWidget(QWidget):
         while i < 360:
             if i % 45 == 0:
                 painter.drawLine(0, -40, 0, -50)
-                painter.drawText(-metrics.width(self._pointText[i]) / 2.0, -52,
-                                 self._pointText[i])
+                painter.drawText(int(-metrics.width(self._pointText[i]) / 2.0),
+                                 -52, self._pointText[i])
             else:
                 painter.drawLine(0, -45, 0, -50)
 
@@ -272,8 +280,10 @@ def update(data):
 # make sure that all necessary keys are there
 def correctData(dataIn):
     wanted_keys = [
-        "X position", "Y position", "Wind Direction", "Roll", "Pitch", "Yaw",
-        "Sail Angle", "Tail Angle", "Heading"
+        "X position", "Y position", "Wind Direction", "Relative wind", "Roll",
+        "Pitch", "Yaw", "Sail Angle", "Tail Angle", "Heading",
+        "Angular velocity", "X velocity", "Y velocity", "X waypoint",
+        "Y waypoint"
     ]
     for key in wanted_keys:
         if key not in dataIn:
@@ -283,6 +293,7 @@ def correctData(dataIn):
 
 # try to read input and update display
 def run():
+    global prev_data, terminal, trainer
     try:
         # read a line and make sure it's the correct format
         packet = str(serial_port.readline())
@@ -308,6 +319,16 @@ def run():
                         data[label] = value
 
                 update(data)
+
+                if TRAIN_FLAG:
+                    data = dataToState(data)
+                    if data is not None and prev_data is not None:
+                        sail_act = prev_data[3] / 90.0
+                        rud_act = prev_data[4] / 30.0
+                        action = numpy.array([sail_act, rud_act])
+                        trainer.train(prev_data, action, terminal, data)
+
+                    prev_data = data
 
             # read all waypoints
             elif waypt_header in split_line and end in split_line:
@@ -336,6 +357,7 @@ def run():
 
             # read hit waypoint message
             elif hit_header in split_line and end in split_line:
+                terminal = True
                 data_line = filter(lambda l: l not in [waypt_header, end],
                                    split_line)
 
@@ -356,9 +378,10 @@ def run():
         else:
             print("Regex failed to match")
 
-        if(manual_mode and controller != False):
+        if (manual_mode and controller != False):
             #main_angle_input.setValue(main_angle_input.value() + controller.axis_l.x * 90)
-            main_angle_input.setValue(round(main_angle_input.value() + controller.axis_l.x * 50))
+            main_angle_input.setValue(
+                round(main_angle_input.value() + controller.axis_l.x * 50))
             tail_angle_input.setValue(round(controller.axis_r.x * 30))
 
     except KeyboardInterrupt:
@@ -366,6 +389,44 @@ def run():
 
 
 brush_list = [pg.mkColor(c) for c in "rgbcmykwrg"]
+
+
+# convert data into a state vector for training
+def dataToState(data):
+    if data["X waypoint"] == "None" or data["Y waypoint"] == "None":
+        return None
+
+    # 1. x velocity
+    vel_x = float(data["X velocity"])
+    # 2. y velocity
+    vel_y = float(data["Y velocity"])
+    # 3. angular velocity (rad/s)
+    vel_angular = np.deg2rad(float(data["Angular velocity"]))
+    # 4. sail angle
+    sail_angle = float(data["Sail Angle"])
+    # 5. rudder angle
+    rudder_angle = float(data["Tail Angle"])
+    # 6. relative wind x
+    rel_wind = float(data["Relative wind"])
+    rel_wind_x = np.cos(rel_wind * np.pi / 180)
+    # 7. relative wind y
+    rel_wind_y = np.sin(rel_wind * np.pi / 180)
+    # 8. distance from goal x component
+    boat_position_x = float(data["X position"])
+    waypoint_x = float(data["X waypoint"])
+    dist_goal_x = np.absolute(boat_position_x - waypoint_x)
+    # 9. distance from goal y component
+    boat_position_y = float(data["Y position"])
+    waypoint_y = float(data["Y waypoint"])
+    dist_goal_y = np.absolute(boat_position_y - waypoint_y)
+
+    state_vector = np.array([
+        vel_x, vel_y, vel_angular, sail_angle, rudder_angle, rel_wind_x,
+        rel_wind_y, dist_goal_x, dist_goal_y
+    ])
+
+    # tensor = torch.from_numpy(state_vector)
+    return state_vector
 
 
 # reload buoys from file
@@ -493,12 +554,10 @@ def manual_control():
         tail_angle_input.setDisabled(False)
         send_button.setDisabled(False)
 
-
         # Left and right axis move event
         if controller != False:
             controller.axis_l.when_moved = on_main_axis_moved
             controller.axis_r.when_moved = on_tail_axis_moved
-
 
 
 def on_main_axis_moved(axis):
@@ -507,15 +566,18 @@ def on_main_axis_moved(axis):
 
     send_angles()
 
+
 def on_tail_axis_moved(axis):
     print('Axis {0} moved to {1} {2}'.format(axis.name, axis.x, axis.y))
 
     #tail_angle_input.setValue(axis.x * 30)
     send_angles()
 
+
 def on_a_button_pressed(button):
-    main_angle_input.setValue(0) 
+    main_angle_input.setValue(0)
     tail_angle_input.setValue(0)
+
 
 def send_angles():
     main_angle = main_angle_input.value()

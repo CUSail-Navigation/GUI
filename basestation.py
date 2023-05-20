@@ -14,6 +14,8 @@ import pprint
 import signal
 from xbox360controller import Xbox360Controller
 
+# NOTE don't use this, use basestation_standalone instead!!!
+
 # log output to a csv file
 LOG_FLAG = True
 log_name = './gui_output/log-' + time.asctime(time.gmtime()).replace(
