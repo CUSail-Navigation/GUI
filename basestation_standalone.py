@@ -360,6 +360,7 @@ def run():
             #main_angle_input.setValue(main_angle_input.value() + controller.axis_l.x * 90)
             main_angle_input.setValue(round(main_angle_input.value() + controller.axis_l.x * 50))
             tail_angle_input.setValue(round(controller.axis_r.x * 30))
+            send_angles() #Should send angles every second if in manual mode!
 
     except KeyboardInterrupt:
         exit(0)
@@ -505,13 +506,10 @@ def on_main_axis_moved(axis):
     print('Axis {0} moved to {1} {2}'.format(axis.name, axis.x, axis.y))
     #main_angle_input.setValue(axis.x * 90)
 
-    send_angles()
-
 def on_tail_axis_moved(axis):
     print('Axis {0} moved to {1} {2}'.format(axis.name, axis.x, axis.y))
 
-    #tail_angle_input.setValue(axis.x * 30)
-    send_angles()
+
 
 def on_a_button_pressed(button):
     main_angle_input.setValue(0) 
