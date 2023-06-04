@@ -40,6 +40,13 @@ double getRand20() {
   return (double) ang + (double) random(0, 100) / 100.0;
 }
 
+/*
+ * Generates a random double between a and b
+ */
+double getRand(double a, double b) {
+  return (double) random(a, b - 1) + (double) random(0, 100) / 100.0;
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.print("Beginning Setup");
@@ -77,7 +84,7 @@ void printHitWaypoint() {
 }
 
 void loop() {
-  delay(2500);
+  delay(1000);
 
   if (idx % 20 == 0) {
     if (idx % 40 == 0) {
@@ -90,12 +97,18 @@ void loop() {
 
   coord_xy currentPosition = getRandPoint();
   double windDir = getRand360();
+  double relWind = getRand360();
   double pitch = getRand20();
   double roll = getRand20();
   double yaw = getRand360();
-  double sail = getRand360();
-  double tail = getRand360();
+  double sail = getRand(-90.0, 90.0);
+  double tail = getRand(-30.0, 30.0);
   double heading = getRand360();
+  double angVel = getRand(-2.0, 2.0);
+  double xVel = getRand(-2.0, 2.0);
+  double yVel = getRand(-2.0, 2.0);
+  double xWay = getRand(-50.0, 50.0);
+  double yWay = getRand(-50.0, 50.0);
 
   Serial.print("----------NAVIGATION----------");
   Serial.print(",Origin Latitude: ");
@@ -108,6 +121,8 @@ void loop() {
   Serial.print(currentPosition.y,3);
   Serial.print(",Wind Direction: ");
   Serial.print(windDir, 3);
+  Serial.print(",Relative wind: ");
+  Serial.print(relWind, 3);
   Serial.print(",Pitch: ");
   Serial.print(pitch);
   Serial.print(",Roll: ");
@@ -120,5 +135,15 @@ void loop() {
   Serial.print(tail);
   Serial.print(",Heading: ");
   Serial.print(heading);
+  Serial.print(",Angular velocity: ");
+  Serial.print(angVel, 3);
+  Serial.print(",X velocity: ");
+  Serial.print(xVel, 3);
+  Serial.print(",Y velocity: ");
+  Serial.print(yVel, 3);
+  Serial.print(",X waypoint: ");
+  Serial.print(xWay, 3);
+  Serial.print(",Y waypoint: ");
+  Serial.print(yWay, 3);
   Serial.print(",----------END----------\n");
 }
