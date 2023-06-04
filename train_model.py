@@ -7,6 +7,9 @@ import os
 
 device = None
 
+# TODO update the training function to work with the four input RL model
+# (see simulator user manual)
+
 
 class ReplayBuffer():
     def __init__(self, buffer_size):

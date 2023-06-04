@@ -9,11 +9,10 @@ import time
 import numpy as np
 import serial
 import re
-from xbox360controller import Xbox360Controller
-from train_model import *
+# from xbox360controller import Xbox360Controller
 
 # train the RL model?
-TRAIN_FLAG = True
+TRAIN_FLAG = False
 actor_path = ""
 critic_path = ""
 
@@ -21,6 +20,7 @@ trainer = None
 prev_data = None
 terminal = False
 if TRAIN_FLAG:
+    from train_model import *
     trainer = RealWorldTrain(actor_path, critic_path)
 
 # manual control mode indicator
@@ -53,8 +53,10 @@ app = QApplication(sys.argv)
 w = QWidget()
 
 # serial port to read from (different for everyone)
-serial_port = serial.Serial('/dev/ttyUSB0', 9600,
-                            timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
+# serial_port = serial.Serial('/dev/ttyUSB0', 9600,
+#                             timeout=0.25)  #Courtney - /dev/cu.usbmodem14201
+serial_port = serial.Serial('/dev/cu.usbmodem14401', 9600,
+                            timeout=0.25)  #Courtney -
 
 header = "----------NAVIGATION----------"
 end = "----------END----------"
